@@ -41,16 +41,21 @@ class Spacebrew(object):
 
 	class Events(object):
 		def __init__(self, events):
-			self.callbacks={}
+			self.callbacks = {}
 			for event in events:
-				self.callbacks["event"] = []
+				# print("creating method array for " + event)
+				self.callbacks[event] = []
 		def register(self, event, target):
-			if self.callbacks[event]:
-				self.callbacks[event].append(target)
+			# print("adding method to " + event)
+			assert type(self.callbacks[event]) is list
+			# print("added method to " + event)
+			self.callbacks[event].append(target)
 		def call(self, event):
-			if self.callbacks[event]:
-				for target in self.callbacks[event]:
-					target()
+			# print("calling method for " + event)
+			assert type(self.callbacks[event]) is list
+			for target in self.callbacks[event]:
+				# print("found method for " + event)
+				target()
 
 
 	def __init__(self, name, description="", server="sandbox.spacebrew.cc", port=9000):
@@ -91,15 +96,14 @@ class Spacebrew(object):
 			}}
 		return d
 
-	def on_open(self,ws):
-		# logging.info("Opening brew.")
+	def on_open(self, ws):
 		ws.send(json.dumps(self.makeConfig()))
- 		self.connected = true
+ 		self.connected = True
  		self.events.call("open")
 
 	def on_message(self,ws,message):
 		msg = json.loads(message)['message']
-		sub=self.subscribers[msg['name']]
+		sub = self.subscribers[msg['name']]
 		sub.disseminate(msg['value'])
  		self.events.call("message")
 
@@ -140,7 +144,9 @@ class Spacebrew(object):
 		self.ws = websocket.WebSocketApp( "ws://{0}:{1}".format(self.server,self.port),
 						on_message = lambda ws, msg: self.on_message(ws, msg),
 						on_error = lambda ws, err: self.on_error(ws,err),
-						on_close = lambda ws: self.on_close(ws) )
+						on_close = lambda ws: self.on_close(ws), 
+						on_open = lambda ws: self.on_open(ws)
+						)
 		self.ws.on_open = lambda ws: self.on_open(ws)
 		self.ws.run_forever()
 

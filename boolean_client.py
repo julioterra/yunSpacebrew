@@ -20,52 +20,38 @@ for cur_ele in sys.argv:
 # configure the spacebrew client
 brew = Spacebrew(name=name, server=server)
 brew.addPublisher("local state", "boolean")
-brew.addSubscriber("remote state", "boolean")
+# brew.addSubscriber("remote state", "boolean")
 
-def handleBoolean(value):
-	global code
-	print("got message " + (str(value) + "  "))
-	request_input()
+# def handleBoolean(value):
+# 	global code
+# 	print("got message " + (str(value) + "  "))
+# 	request_input()
 
-brew.subscribe("remote state", handleBoolean)
+# brew.subscribe("remote state", handleBoolean)
 
-def request_input():
+def requestInput():
 	global state
-	a = raw_input( "send message?" )
+	a = raw_input("press key to send msg " )
 	state = not state
 	brew.publish('local state', state)
-	print("sent response " + str(state))
-	request_input()
+	print("sent msg " + str(state))
+	requestInput()
+
+brew.addListener("open", requestInput)
 
 if __name__ == "__main__":
 	try:
 		# start-up spacebrew
-		brew.start()
 
 		# create and load info message at the top of the terminal window
-		info_msg = "This is the pySpacebrew library boolean example. It sends out a boolean message every time\n" 
-		info_msg += "the enter or return key is pressed and displays the latest boolean value it has received.\n"  
+		info_msg = "\nThis is the pySpacebrew library boolean send example. It sends out a boolean message every time\n" 
+		info_msg += "the enter or return key is pressed.\n"  
 		info_msg += "Connected to Spacebrew as: " + name + "\n"
-		info_msg += "IMPORTANT: don't shrink the Terminal window as it may cause app to crash (bug with curses lib)."  
 		print(info_msg)
 
-		request_input()
+		# request_input()
 
-		# line = sys.stdin.readline()
-
-		# while line:
-		# 	print line,
-		# 	line = sys.stdin.readline()
-
-		# listen for keypresses and handle input
-		# while 1:
-
-			# if (c == 10 or c == 13): 
-			# 	# local_state = not local_state
-			# 	brew.publish('local state', local_state)
-				# stdscr.addstr(pos_local, pos_state, (str(local_state) + "  ").encode(code))
-
-			# stdscr.refresh()
+		brew.start()
 
 	# closing out the app and returning terminal to old settings
 	finally:
