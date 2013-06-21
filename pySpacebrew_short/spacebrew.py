@@ -1,10 +1,8 @@
 #!/usr/bin/python
 
 from websocket import websocket
-# import threading
-# import logging
+from bridge import json
 import time
-import json
 
 class Spacebrew(object):
 
@@ -99,12 +97,13 @@ class Spacebrew(object):
 		return d
 
 	def on_open(self, ws):
-		ws.send(json.dumps(self.makeConfig()))
+		ws.send(json.write(self.makeConfig()))
  		self.connected = True
  		self.events.call("open")
 
 	def on_message(self,ws,message):
-		msg = json.loads(message)['message']
+		full = json.read(message)[0]
+		msg = full["message"]
 		sub = self.subscribers[msg['name']]
 		sub.disseminate(msg['value'])
  		self.events.call("message")
@@ -136,7 +135,7 @@ class Spacebrew(object):
 			'name':publisher.name,
 			'type':publisher.type,
 			'value':value } }
-		self.ws.send(json.dumps(message))
+		self.ws.send(json.write(message))
 
 	def subscribe(self,name,target):
 		subscriber = self.subscribers[name]
@@ -155,10 +154,6 @@ class Spacebrew(object):
 	def start(self):
 		self.started = True
 		self.run()
-		# def run(*args):
-		# 	self.run()
-		# self.thread = threading.Thread(target=run)
-		# self.thread.start()
 
 	def stop(self):
 		self.started = False

@@ -2,8 +2,8 @@
 
 import time
 import sys
-from pySpacebrew.spacebrew import Spacebrew
-
+from pySpacebrew_short.spacebrew import Spacebrew
+import thread
 
 # get app name and server from query string
 name = "Arduino Yun"
@@ -20,24 +20,26 @@ for cur_ele in sys.argv:
 # configure the spacebrew client
 brew = Spacebrew(name=name, server=server)
 brew.addPublisher("local state", "boolean")
-# brew.addSubscriber("remote state", "boolean")
+brew.addSubscriber("remote state", "boolean")
 
-# def handleBoolean(value):
-# 	global code
-# 	print("got message " + (str(value) + "  "))
-# 	request_input()
+def handleBoolean(value):
+	global code
+	print("got message " + (str(value) + "  "))
 
-# brew.subscribe("remote state", handleBoolean)
+brew.subscribe("remote state", handleBoolean)
 
 def requestInput():
 	global state
-	a = raw_input("press key to send msg " )
+	a = raw_input("press key to send msg \n" )
 	state = not state
 	brew.publish('local state', state)
 	print("sent msg " + str(state))
 	requestInput()
 
-brew.addListener("open", requestInput)
+def startThread():
+	thread.start_new_thread(requestInput, ())
+
+brew.addListener("open", startThread)
 
 if __name__ == "__main__":
 	try:
@@ -52,6 +54,7 @@ if __name__ == "__main__":
 		# request_input()
 
 		brew.start()
+
 
 	# closing out the app and returning terminal to old settings
 	finally:
