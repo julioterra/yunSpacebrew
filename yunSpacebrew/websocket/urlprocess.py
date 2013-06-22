@@ -20,11 +20,6 @@ scheme_chars = ('abcdefghijklmnopqrstuvwxyz'
 _parse_cache = {}
 
 def urlparse(url, scheme='', allow_fragments=True):
-    """Parse a URL into 6 components:
-    <scheme>://<netloc>/<path>;<params>?<query>#<fragment>
-    Return a 6-tuple: (scheme, netloc, path, params, query, fragment).
-    Note that we don't break the components up in smaller bits
-    (e.g. netloc is a single string) and we don't expand % escapes."""
     tuple = urlsplit(url, scheme, allow_fragments)
     scheme, netloc, url, query, fragment = tuple
     if scheme in uses_params and ';' in url:
@@ -34,11 +29,6 @@ def urlparse(url, scheme='', allow_fragments=True):
     return ParseResult(scheme, netloc, url, params, query, fragment)
 
 def urlsplit(url, scheme='', allow_fragments=True):
-    """Parse a URL into 5 components:
-    <scheme>://<netloc>/<path>?<query>#<fragment>
-    Return a 5-tuple: (scheme, netloc, path, query, fragment).
-    Note that we don't break the components up in smaller bits
-    (e.g. netloc is a single string) and we don't expand % escapes."""
     allow_fragments = bool(allow_fragments)
     key = url, scheme, allow_fragments, type(url), type(scheme)
     cached = _parse_cache.get(key, None)

@@ -69,6 +69,7 @@ class Spacebrew(object):
 		self.subscribers = {}
 		self.ws = None
 		self.events = self.Events(["open", "close", "error", "message"])
+ 		print ("init spacebrew")
 
 	def addPublisher(self, name, brewType="string", default=None):
 		if self.connected:
@@ -99,6 +100,7 @@ class Spacebrew(object):
 	def on_open(self, ws):
 		ws.send(json.write(self.makeConfig()))
  		self.connected = True
+ 		print ("conection openned")
  		self.events.call("open")
 
 	def on_message(self,ws,message):

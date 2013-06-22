@@ -2,11 +2,11 @@
 
 import time
 import sys
-from pySpacebrew_short.spacebrew import Spacebrew
+from spacebrew import Spacebrew
 import thread
 
 # get app name and server from query string
-name = "Arduino Yun"
+name = "Arduino Yun Boolean"
 server = "sandbox.spacebrew.cc"
 state = False
 
