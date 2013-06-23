@@ -1,4 +1,4 @@
-# Spacebrew and Websocket on the Yun
+# Spacebrew and Websocket for the Arduino Yun
   
 ## Installing Websockets:
 To install the websockets library just copy the websocket folder to the /usr/lib/python2.7 directory on the arduino yun.  
