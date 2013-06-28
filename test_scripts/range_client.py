@@ -24,7 +24,6 @@ brew.addPublisher("local state", "range")
 brew.addSubscriber("remote state", "range")
 
 def handleRange(value):
-	global code
 	print("got message " + (str(value) + "  "))
 
 brew.subscribe("remote state", handleRange)
@@ -38,6 +37,7 @@ def requestInput():
 	requestInput()
 
 def startThread():
+	print("starting new thread")
 	thread.start_new_thread(requestInput, ())
 
 brew.addListener("open", startThread)

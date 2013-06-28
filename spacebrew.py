@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 from websocket import websocket
-from bridge import json
+import json
 import time
 
 class Spacebrew(object):
@@ -104,7 +104,7 @@ class Spacebrew(object):
  		self.events.call("open")
 
 	def on_message(self,ws,message):
-		full = json.read(message)[0]
+		full = json.read(message)
 		msg = full["message"]
 		sub = self.subscribers[msg['name']]
 		sub.disseminate(msg['value'])
