@@ -1,11 +1,15 @@
 #!/usr/bin/python
 
+from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, gethostname
+from select import select
 from websocket import websocket
 import json
 import time
 import optparse
 from optparse import Option
 import sys
+import thread
+
 
 class OPT:
 	SERVER 			= '--server'
@@ -189,6 +193,7 @@ class Spacebrew(object):
 		ws.send( json.write(self.makeConfig()) )
  		self.connected = True
  		print ( "[on_open] client configured with msg ", str(self.makeConfig()) )
+		thread.start_new_thread(startConsole, ())
 
 	def on_message(self,ws,message):
 	 	print ( "[on_message] message received ", str(message) )
@@ -252,6 +257,45 @@ class Spacebrew(object):
 		if self.ws is not None:
 			self.ws.close()
 
+def startSpacebrew():
+	print ( "[startSpacebrew]")
+	brew = Spacebrew(name=options.name, server=options.server)
+
+	for sub in options.subs:
+		brew.addSubscriber(sub["name"], sub["type"])
+
+	for pub in options.pubs:
+		brew.addPublisher(pub["name"], pub["type"])
+
+	try:
+		brew.start()
+
+	finally:
+		brew.stop()
+
+def startConsole():
+	print ( "[startConsole]")
+	console = socket(AF_INET, SOCK_STREAM)
+
+	try:
+		print ( "[startConsole] 2")
+		console.connect(('localhost', 6571))
+		print ( "[startConsole] 3")
+		console.setblocking(0)
+		print "connected to socket" 
+	except:
+		print "not able to connect" 
+	finally:
+		print "not able to connect" 
+		console.close()
+
+	try:
+		data = console.recv(1024)
+		print "received data ", data 
+	except:
+		print "no data available" 
+
+
 if __name__ == "__main__":
 	print """
 This is the Spacebrew module. 
@@ -260,16 +304,6 @@ See spacebrew_ex.py for usage examples.
 
 parseInput(sys.argv[1:])
 
-brew = Spacebrew(name=options.name, server=options.server)
-
-for sub in options.subs:
-	brew.addSubscriber(sub["name"], sub["type"])
-
-for pub in options.pubs:
-	brew.addPublisher(pub["name"], pub["type"])
-
-try:
-	brew.start()
-finally:
-	brew.stop()
+startSpacebrew()
+# thread.start_new_thread(startSpacebrew, ())
 
