@@ -233,20 +233,19 @@ class Spacebrew(object):
 			'value':value } }
 
  		print ( "[publish] publishing full message ", str(message))
-		# self.ws.send(json.write(message))
-		sendWebsocket(json.write(message))
+		self.ws.send(json.write(message))
 
 	def run(self):
 		pass
-		# self.ws = websocket.WebSocketApp( "ws://{0}:{1}".format(self.server,self.port),
-		# 				on_message = lambda ws, msg: self.on_message(ws, msg),
-		# 				on_error = lambda ws, err: self.on_error(ws,err),
-		# 				on_close = lambda ws: self.on_close(ws), 
-		# 				on_open = lambda ws: self.on_open(ws)
-		# 				)
-		# self.ws.on_open = lambda ws: self.on_open(ws)
-  		# print ( "[run] running websocket " )
-		# self.ws.run_forever()
+		self.ws = websocket.WebSocketApp( "ws://{0}:{1}".format(self.server,self.port),
+						on_message = lambda ws, msg: self.on_message(ws, msg),
+						on_error = lambda ws, err: self.on_error(ws,err),
+						on_close = lambda ws: self.on_close(ws), 
+						on_open = lambda ws: self.on_open(ws)
+						)
+		self.ws.on_open = lambda ws: self.on_open(ws)
+  		print ( "[run] running websocket " )
+		self.ws.run_forever()
 
 	def start(self):
 		self.started = True
@@ -257,77 +256,9 @@ class Spacebrew(object):
 		if self.ws is not None:
 			self.ws.close()
 
-# def startSpacebrew():
-# 	print ( "[startSpacebrew]")
-
-# 	brew = Spacebrew(name=options.name, server=options.server)
-
-# 	for sub in options.subs:
-# 		brew.addSubscriber(sub["name"], sub["type"])
-
-# 	for pub in options.pubs:
-# 		brew.addPublisher(pub["name"], pub["type"])
-
-# 	try:
-# 		brew.start()
-
-# 	finally:
-# 		brew.stop()
-
-def startConsole():
-	global console
-
-	print ( "[startConsole]")
-
-	console = socket(AF_INET, SOCK_STREAM)
-
-	try:
-		console.connect(('localhost', 6571))
-		console.setblocking(0)
-		print ( "[startConsole] 2")
-	except:
-		print "not able to connect" 
-	# finally:
-	# 	print "not able to connect" 
-	# 	console.close()
-
-	# try:
-	# 	data = console.recv(1024)
-	# 	print "received data ", data 
-	# except:
-	# 	print "no data available" 
-
-def runConsole():
-	global console
-	# print "[runConsole]"
-
-	rd, wr, err = select([console], [console], [], 0)
-
-	if console in rd:
-		chunk = console.recv(512)
-		if chunk == '':
-			print "[runConsole] nothing received closing connection to client"
-			console.close()
-			return None
-		print chunk
-
-	if console in wr:
-		pass
-		# print "[runConsole] ready to send console message"
-
-		# buff = self.clients_sendbuffer
-		# sent = c.send(buff)
-		# self.clients_sendbuffer[c] = buff[sent:]
-    
-    # Drop starving clients
-    # for c in self.clients:
-    #   if len(self.clients_sendbuffer[c])>8192:
-    #     self.close(c)
-
-def startWebsocket(server="sandbox.spacebrew.cc", port=9000, header = [], get_mask_key = None, sockopt = ()):
-	global spacebrewSocket, brew
-
-	spacebrewSocket = websocket.WebSocket(get_mask_key, sockopt = sockopt)
+def runSpacebrew():
+	print ( "[runSpacebrew]")
+	global brew
 
 	brew = Spacebrew(name=options.name, server=options.server)
 
@@ -338,57 +269,61 @@ def startWebsocket(server="sandbox.spacebrew.cc", port=9000, header = [], get_ma
 		brew.addPublisher(pub["name"], pub["type"])
 
 	try:
-		spacebrewSocket.connect("ws://{0}:{1}".format(server, port), header = header)
-		print "spacebrewSocket was successfully openned"
-		brew.on_open(spacebrewSocket)
+		brew.start()
 
-	except Exception, e:
-		print "spacebrewSocket startup error encountered ", str(e)
+	finally:
+		brew.stop()
 
-def runWebsocket():
-	global spacebrewSocket, brew
-	# print "[runWebsocket]"
+def startConsole():
+	global console, console_running
 
-	rd, wr, err = select([spacebrewSocket], [spacebrewSocket], [], 0)
+	try:
+		console = socket(AF_INET, SOCK_STREAM)
+		console.connect(('localhost', 6571))
+		console_running = True
+		print "[startConsole] able to connect" 
+	except:
+		console_running = False
+		print "[startConsole] not able to connect" 
 
-	if spacebrewSocket in rd:
-		data = spacebrewSocket.recv()
-		if data == '':
-			print "[runWebsocket] nothing received closing connection to client"
-			spacebrewSocket.close()
-			return None
+
+def readConsole():
+	global console, data
+
+	data += console.recv(1024)
+	if data == '':
+		print "[runConsole] closing connection to console"
+		console_running = False
+		console.close()
+		return None
+
+	# handle data here
+	if data[-1] == "\n":
 		print data
-		brew.on_message(spacebrewSocket, data)
-
-	if spacebrewSocket in wr:
-		pass
-
-def sendWebsocket(data, opcode = websocket.ABNF.OPCODE_TEXT):
-	global spacebrewSocket
-	if spacebrewSocket.send(data, opcode) == 0:
-		raise WebSocketConnectionClosedException()
-
+		brew.publish("test", data)
+		data = ""
         
+def runConsole():
+	startConsole()
+	try:
+		while True:
+			if console_running:
+				readConsole()
+	finally:
+		console.close()
+
+
 if __name__ == "__main__":
 	print """
 This is the Spacebrew module. 
 See spacebrew_ex.py for usage examples.
 """
+global data, console, console_running
+
+data = ""
 
 parseInput(sys.argv[1:])
 
-# startSpacebrew()
-# thread.start_new_thread(startSpacebrew, ())
+thread.start_new_thread(runSpacebrew, ())
 
-startWebsocket()
-startConsole()
-
-try:
-	while True:
-		runWebsocket()
-		runConsole()
-finally:
-	spacebrewSocket.close()
-	console.close()
-
-
+runConsole()
