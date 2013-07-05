@@ -10,6 +10,10 @@ from optparse import Option
 import sys
 import thread
 
+class SERIAL:
+	START 			= chr(2)
+	DIV				= chr(7)
+	END 			= chr(3)
 
 class OPT:
 	SERVER 			= '--server'
@@ -54,12 +58,13 @@ class SpacebrewOptParser(optparse.OptionParser):
 
 class sbOptions(Option):
 
-	ACTIONS = Option.ACTIONS + ("pubsub",)
-	STORE_ACTIONS = Option.STORE_ACTIONS + ("pubsub",)
-	TYPED_ACTIONS = Option.TYPED_ACTIONS + ("pubsub",)
-	ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("pubsub",)
+	ACTIONS = Option.ACTIONS + ("pubsub", "strspaces")
+	STORE_ACTIONS = Option.STORE_ACTIONS + ("pubsub", "strspaces")
+	TYPED_ACTIONS = Option.TYPED_ACTIONS + ("pubsub", "strspaces")
+	ALWAYS_TYPED_ACTIONS = Option.ALWAYS_TYPED_ACTIONS + ("pubsub", "strspaces")
 
 	def take_action(self, action, dest, opt, value, values, parser):
+
 		if action == "pubsub":
 
 			# read the subscriber and publisher arguments
@@ -76,6 +81,17 @@ class sbOptions(Option):
 			else:
 				if opt == '-s': exitWithError(ERROR.SUBSCRIBER_MISSING, len(subpubArray))
 				if opt == '-p': exitWithError(ERROR.PUBLISHER_MISING, len(subpubArray))
+
+		elif action == "strspaces":
+
+			# read the subscriber and publisher arguments
+			for arg in parser.rargs:
+				if arg[:2] == "--" and len( arg ) > 2: break
+				if arg[:1] == "-" and len( arg ) > 1: break
+				value += " " + arg
+
+			setattr(values, dest, value )
+
 		else:
 			Option.take_action(self, action, dest, opt, value, values, parser)
 
@@ -88,12 +104,13 @@ def parseInput(args):
     parser.add_option(OPT.PUBLISHER, dest='pubs', metavar = 'subs: name, type', action='pubsub', help='register publisher', default=[])
     parser.add_option(OPT.SERVER, dest='server', metavar = 'server', default='sandbox.spacebrew.cc', help='spacebrew server hostname [default: %default]')
     parser.add_option(OPT.PORT, dest='port', metavar = 'port', default=9000, type="int", help='spacebrew server port number [default: %default]')
-    parser.add_option(OPT.NAME, dest='name', metavar = 'name', default='Arduino Yun', help='app name [default: %default]')
-    parser.add_option(OPT.DESCRIPTION, dest='description', metavar = 'description', default='', help='brief description of app')
+    parser.add_option(OPT.NAME, dest='name', metavar = 'name', action='strspaces', default='Arduino Yun', help='app name [default: %default]')
+    parser.add_option(OPT.DESCRIPTION, dest='description', metavar = 'description', action='strspaces', default='', help='brief description of app')
+    parser.add_option('-g', dest='debug', metavar = 'debug', default=False, help='debug value')
 
     (options, unusedArgs) = parser.parse_args(args)
 
-    print ("options ", str(options))
+    if options.debug: print ("options ", str(options))
 
 def exitWithError(err, params=None):
     errMsg = 'Error: ' + err[1] + '\n'
@@ -132,18 +149,18 @@ class Spacebrew(object):
 		def __init__(self, events):
 			self.callbacks = {}
 			for event in events:
-				# print("creating method array for " + event)
+				# if options.debug: print("creating method array for " + event)
 				self.callbacks[event] = []
 		def register(self, event, target):
-			# print("adding method to " + event)
+			# if options.debug: print("adding method to " + event)
 			assert type(self.callbacks[event]) is list
-			# print("added method to " + event)
+			# if options.debug: print("added method to " + event)
 			self.callbacks[event].append(target)
 		def call(self, event):
-			# print("calling method for " + event)
+			# if options.debug: print("calling method for " + event)
 			assert type(self.callbacks[event]) is list
 			for target in self.callbacks[event]:
-				# print("found method for " + event)
+				# if options.debug: print("found method for " + event)
 				target()
 
 	def __init__(self, name, description="", server="sandbox.spacebrew.cc", port=9000):
@@ -159,14 +176,14 @@ class Spacebrew(object):
 		# self.events = self.Events(["open", "close", "error", "message"])
 
 	def addPublisher(self, name, brewType="string", default=None):
- 		print ( "[addPublisher] adding a new publisher ", name, " and type ", brewType )
+ 		if options.debug: print ( "[addPublisher] adding a new publisher ", name, " and type ", brewType )
 		if self.connected:
 			raise ConfigurationError(self,"Can not add a new publisher to a running Spacebrew instance (yet).")
 		else:
 			self.publishers[name]=self.Publisher(name, brewType, default)
 	
 	def addSubscriber(self, name, brewType="string", default=None):
- 		print ( "[addSubscriber] adding a new subscriber ", name, " and type ", brewType )
+ 		if options.debug: print ( "[addSubscriber] adding a new subscriber ", name, " and type ", brewType )
 		if self.connected:
 			raise ConfigurationError(self,"Can not add a new subscriber to a running Spacebrew instance (yet).")
 		else:
@@ -187,37 +204,37 @@ class Spacebrew(object):
 		return config
 
 	def on_open(self, ws):
- 		print ( "[on_open] conection openned" , str(self.makeConfig()) )
+ 		if options.debug: print ( "[on_open] conection openned" , str(self.makeConfig()) )
 		ws.send( json.write(self.makeConfig()) )
  		self.connected = True
- 		print ( "[on_open] client configured with msg ", str(self.makeConfig()) )
+ 		if options.debug: print ( "[on_open] client configured with msg ", str(self.makeConfig()) )
 		# thread.start_new_thread(startConsole, ())
 
 	def on_message(self,ws,message):
-	 	print ( "[on_message] message received ", str(message) )
+	 	if options.debug: print ( "[on_message] message received ", str(message) )
 		full = json.read(message)
 		msg = full["message"]
 		if self.subscribers[msg['name']]:
-	 		print ( "[on_message] passing message to client name ", str( msg['name'] ) )
+	 		if options.debug: print ( "[on_message] passing message to client name ", str( msg['name'] ) )
 			################################
 			# add code here to add appropriate message to mailbox
 			pass
 
 	def on_error(self,ws,error):
- 		print ( "[on_error] error encountered ", str( error ) )
+ 		if options.debug: print ( "[on_error] error encountered ", str( error ) )
 		# self.on_close(ws)
 
 	def on_close(self, ws):
- 		print ( "[on_close] connection closing " )
+ 		if options.debug: print ( "[on_close] connection closing " )
 		self.connected = False
  		# self.events.call("close")
 		while self.started and not self.connected:
 			time.sleep(5)
-	 		print ( "[on_close] trying to re-establish connection " )
+	 		if options.debug: print ( "[on_close] trying to re-establish connection " )
 			self.run()
 
 	def publish(self,name,value):
- 		print ( "[publish] publishing message ", str(value))
+ 		if options.debug: print ( "[publish] publishing message ", str(value))
 		publisher = self.publishers[name]
 
 		if publisher.type == "boolean":
@@ -232,7 +249,7 @@ class Spacebrew(object):
 			'type':publisher.type,
 			'value':value } }
 
- 		print ( "[publish] publishing full message ", str(message))
+ 		if options.debug: print ( "[publish] publishing full message ", str(message))
 		self.ws.send(json.write(message))
 
 	def run(self):
@@ -244,7 +261,7 @@ class Spacebrew(object):
 						on_open = lambda ws: self.on_open(ws)
 						)
 		self.ws.on_open = lambda ws: self.on_open(ws)
-  		print ( "[run] running websocket " )
+  		if options.debug: print ( "[run] running websocket " )
 		self.ws.run_forever()
 
 	def start(self):
@@ -257,22 +274,29 @@ class Spacebrew(object):
 			self.ws.close()
 
 def runSpacebrew():
-	print ( "[runSpacebrew]")
+	if options.debug: print ( "[runSpacebrew]")
 	global brew
 
 	brew = Spacebrew(name=options.name, server=options.server)
-
 	for sub in options.subs:
 		brew.addSubscriber(sub["name"], sub["type"])
-
 	for pub in options.pubs:
 		brew.addPublisher(pub["name"], pub["type"])
 
 	try:
 		brew.start()
-
 	finally:
 		brew.stop()
+
+class Console(object):
+	pass
+
+	def __init__(self, brew):
+		self.brew = brew
+		pass
+
+		# 02 - start message
+		# 03 - end message
 
 def startConsole():
 	global console, console_running
@@ -281,10 +305,11 @@ def startConsole():
 		console = socket(AF_INET, SOCK_STREAM)
 		console.connect(('localhost', 6571))
 		console_running = True
-		print "[startConsole] able to connect" 
+		if options.debug: print "[startConsole] able to connect" 
+		console.send("connected")
 	except:
 		console_running = False
-		print "[startConsole] not able to connect" 
+		if options.debug: print "[startConsole] not able to connect" 
 
 
 def readConsole():
@@ -292,15 +317,15 @@ def readConsole():
 
 	data += console.recv(1024)
 	if data == '':
-		print "[runConsole] closing connection to console"
+		if options.debug: print "[runConsole] closing connection to console"
 		console_running = False
 		console.close()
 		return None
 
 	# handle data here
 	if data[-1] == "\n":
-		print data
-		brew.publish("test", data)
+		if options.debug: print data
+		# brew.publish("test", data)
 		data = ""
         
 def runConsole():
@@ -314,16 +339,16 @@ def runConsole():
 
 
 if __name__ == "__main__":
-	print """
-This is the Spacebrew module. 
-See spacebrew_ex.py for usage examples.
-"""
-global data, console, console_running
+# 	if options.debug: print """
+# This is the Spacebrew module. 
+# See spacebrew_ex.py for usage examples.
+# """
+	global brew, data, console, console_running
 
-data = ""
+	data = ""
 
-parseInput(sys.argv[1:])
+	parseInput(sys.argv[1:])
 
-thread.start_new_thread(runSpacebrew, ())
+	thread.start_new_thread(runSpacebrew, ())
 
-runConsole()
+	runConsole()
