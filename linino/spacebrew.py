@@ -277,7 +277,11 @@ def runSpacebrew():
 	if options.debug: print ( "[runSpacebrew]")
 	global brew
 
-	brew = Spacebrew(name=options.name, server=options.server)
+	brew = Spacebrew( 	name=options.name, 
+						server=options.server, 
+						description=options.description,
+						port=options.port)
+
 	for sub in options.subs:
 		brew.addSubscriber(sub["name"], sub["type"])
 	for pub in options.pubs:
