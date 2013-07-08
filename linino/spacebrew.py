@@ -11,9 +11,19 @@ import sys
 import thread
 
 class SERIAL:
-	START 			= chr(2)
-	DIV				= chr(7)
-	END 			= chr(3)
+
+	class PUB:
+		NAME 			= chr(29)
+		MSG				= chr(30)
+		END 			= chr(31)
+
+	class ERROR:
+		CODE			= chr(30)
+		MSG				= chr(30)
+		END 			= chr(31)
+		PUBLISH_INVALID = (301, 'not able to publish message to spacebrew\n')
+
+
 
 class OPT:
 	SERVER 			= '--server'
@@ -33,6 +43,7 @@ class ERROR:
     DESCRIPTION_MISSING = (206, '(' + OPT.DESCRIPTION + ') description not provided.')
     SUBSCRIBER_MISSING 	= (207, '(' + OPT.SUBSCRIBER + ') subscriber only accepts two args: type and name. %i args provided.')
     PUBLISHER_MISING 	= (208, '(' + OPT.PUBLISHER + ') publisher only accepts two args: type and name.  %i args provided.')
+
 
 class SpacebrewOptParser(optparse.OptionParser):
     ERRORS = {
@@ -216,9 +227,8 @@ class Spacebrew(object):
 		msg = full["message"]
 		if self.subscribers[msg['name']]:
 	 		if options.debug: print ( "[on_message] passing message to client name ", str( msg['name'] ) )
-			################################
-			# add code here to add appropriate message to mailbox
-			pass
+	 		printConsole("from " + str(msg['name']).encode('ascii', 'ignore') + " received " + (msg['value']).encode('ascii', 'ignore') + '\n')
+	 		# toSubscriber(str(msg['name']), str(msg['value']))
 
 	def on_error(self,ws,error):
  		if options.debug: print ( "[on_error] error encountered ", str( error ) )
@@ -234,11 +244,12 @@ class Spacebrew(object):
 			self.run()
 
 	def publish(self,name,value):
+		printConsole("publish 1 " + str(name) + " + " + str(value) + "\n")
  		if options.debug: print ( "[publish] publishing message ", str(value))
 		publisher = self.publishers[name]
 
 		if publisher.type == "boolean":
-			if value == True: 
+			if value == True or value == 1 or value == "1": 
 				value = "true"
 			else:
 				value = "false"
@@ -248,6 +259,8 @@ class Spacebrew(object):
 			'name':publisher.name,
 			'type':publisher.type,
 			'value':value } }
+
+		printConsole("publish 2 " + str(message) + "\n")
 
  		if options.debug: print ( "[publish] publishing full message ", str(message))
 		self.ws.send(json.write(message))
@@ -310,7 +323,7 @@ def startConsole():
 		console.connect(('localhost', 6571))
 		console_running = True
 		if options.debug: print "[startConsole] able to connect" 
-		console.send("connected")
+		console.send("\n\nconnected to spacebrew.py\n\n")
 	except:
 		console_running = False
 		if options.debug: print "[startConsole] not able to connect" 
@@ -319,18 +332,54 @@ def startConsole():
 def readConsole():
 	global console, data
 
-	data += console.recv(1024)
-	if data == '':
+	index_end = -1
+
+	new_data = console.recv(1024)
+
+    # if new data was received then add it buffer and check if end message was provided
+	if new_data:
+		data += new_data
+		index_end = data.find(SERIAL.PUB.END)
+
+	if new_data == '':
 		if options.debug: print "[runConsole] closing connection to console"
 		console_running = False
 		console.close()
 		return None
 
-	# handle data here
-	if data[-1] == "\n":
+	# if message end was found, then look for the start and div marker
+	if index_end >= 0:
+		# printConsole("full message: " + data + "\n")
+
+		index_name = data.find(SERIAL.PUB.NAME)
+		index_msg = data.find(SERIAL.PUB.MSG)
+
+		# printConsole("index_end: " + str(index_end) + "\n")
+		# printConsole("index_name: " + str(index_name) + "\n")
+		# printConsole("index_msg: " + str(index_name) + "\n")
+
 		if options.debug: print data
-		# brew.publish("test", data)
-		data = ""
+
+		if index_name >= 0 and index_msg >= 0:
+
+			try:
+				# send the message to spacebrew
+				publisher = data[(index_name + 1):index_msg]
+				msg = data[(index_msg + 1):index_end]
+				brew.publish(publisher, msg)
+				data = ""
+
+				# printConsole("pub: " + publisher + "\n")
+				# printConsole("msg: " + msg + "\n")
+
+			except Exception:
+				error_msg = SERIAL.ERROR.CODE + str(SERIAL.ERROR.PUBLISH_INVALID[0]) + ", "
+				error_msg += SERIAL.ERROR.MSG + SERIAL.ERROR.PUBLISH_INVALID[1] 
+				error_msg += " - " + str(Exception) + "\n" + SERIAL.ERROR.END
+				printConsole(error_msg)
+				pass
+
+			data = ""
         
 def runConsole():
 	startConsole()
@@ -341,6 +390,15 @@ def runConsole():
 	finally:
 		console.close()
 
+def toSubscriber(name, message):
+	try:
+		full_msg = SERIAL.PUB.NAME + name + SERIAL.PUB.MSG + message + SERIAL.PUB.END
+		console.send(full_msg)
+	except:
+		pass
+
+def printConsole(message):
+	console.send(message)
 
 if __name__ == "__main__":
 # 	if options.debug: print """
