@@ -66,7 +66,7 @@ void setup() {
 	addSubscribe("boolean test", "boolean");
 	connectSB(); 
    
-//	Console.buffer(64);
+	Console.buffer(64);
 //	Serial.println("Console Started"); 
 } 
 
@@ -77,15 +77,42 @@ int interval = 2000;
 
 void loop() { 
 	if ((millis() - last) > interval) {
-		String test_msg = "test number ";
-		test_msg += counter;
+		String test_str = "test string";
+		String test_ran = "test range";
+		String test_bool = "test boolean";
 		counter ++;
 
-		send("string test", test_msg);
-		send("range test", 500);
-		send("boolean test", true);
+		int test_num = 500;
+		boolean test_flag = true;
+
+		Serial.print(char(29));
+		Serial.print(test_str);
+		Serial.print(char(30));
+		Serial.print(test_str);
+		Serial.println(char(31));
+		Serial.flush();
+		send(test_str, test_str);
+
+		send(test_ran, test_num);
+		send(test_bool, test_flag);
+
+		Serial.print(char(29));
+		Serial.print(test_ran);
+		Serial.print(char(30));
+		Serial.print(test_num);
+		Serial.println(char(31));
+		Serial.flush();
+
+		Serial.print(char(29));
+		Serial.print(test_bool);
+		Serial.print(char(30));
+		Serial.print(test_flag);
+		Serial.println(char(31));
+		Serial.flush();
+
 
 		last = millis();
+
 	}
 
 	monitorSB();
@@ -232,28 +259,36 @@ void onMessage() {
 	sub_buffer = "";
 }
 
-boolean send(const String name, const String value){
+boolean send(String name, String value){
 	Console.print(char(29));
 	Console.print(name);
 	Console.print(char(30));
 	Console.print(value);
 	Console.print(char(31));
+	Console.flush();
+
+	Serial.print(char(29));
+	Serial.print(name);
+	Serial.print(char(30));
+	Serial.print(value);
+	Serial.println(char(31));
+	Serial.flush();
 	return true;
 }
 
-boolean send(const String name, bool value){
+boolean send(String& name, bool value){
 	return send(name, (value ? "true" : "false"));
 }
 
-boolean send(const String name, int value) {
+boolean send(String& name, int value) {
 	return send(name, String(value));
 }
 
-bool send(const String name, long value) {
+bool send(String& name, long value) {
 	return send(name, String(value));
 }
 
-bool send(const String name, float value) {
+bool send(String& name, float value) {
 	return send(name, String(value));
 }
 

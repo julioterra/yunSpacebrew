@@ -348,38 +348,50 @@ def readConsole():
 		return None
 
 	# if message end was found, then look for the start and div marker
-	if index_end >= 0:
+	if index_end > 0:
 		# printConsole("full message: " + data + "\n")
 
 		index_name = data.find(SERIAL.PUB.NAME)
 		index_msg = data.find(SERIAL.PUB.MSG)
 
-		# printConsole("index_end: " + str(index_end) + "\n")
-		# printConsole("index_name: " + str(index_name) + "\n")
-		# printConsole("index_msg: " + str(index_name) + "\n")
+		printConsole("indices - end: " + str(index_end) + ", name: " + str(index_name) + ", msg: " + str(index_name) + "\n")
 
 		if options.debug: print data
 
-		if index_name >= 0 and index_msg >= 0:
+		publish_route = "" 
+		msg = ""
+
+		if index_name >= 0 and index_msg > 0:
 
 			try:
 				# send the message to spacebrew
-				publisher = data[(index_name + 1):index_msg]
-				msg = data[(index_msg + 1):index_end]
-				brew.publish(publisher, msg)
-				data = ""
-
-				# printConsole("pub: " + publisher + "\n")
-				# printConsole("msg: " + msg + "\n")
-
+				publish_route = data[(index_name + 1):index_msg]
 			except Exception:
-				error_msg = SERIAL.ERROR.CODE + str(SERIAL.ERROR.PUBLISH_INVALID[0]) + ", "
-				error_msg += SERIAL.ERROR.MSG + SERIAL.ERROR.PUBLISH_INVALID[1] 
-				error_msg += " - " + str(Exception) + "\n" + SERIAL.ERROR.END
+				error_msg = "issue extracting publisher name - start index: " + (index_name + 1)
+				error_msg += ", end index: " + index_msg
 				printConsole(error_msg)
-				pass
 
-			data = ""
+			try:
+				# send the message to spacebrew
+				msg = data[(index_msg + 1):index_end]
+			except Exception:
+				error_msg = "issue extracting msg - start index: " + (index_msg + 1)
+				error_msg += ", end index: " + index_end
+				printConsole(error_msg)
+
+			try:
+				if publish_route != "" and msg != "":
+					brew.publish(publish_route, msg)
+			except Exception:
+				error_msg = "issue sending message via spacebrew, route: " + publish_route
+				error_msg += ", message: " + msg
+				printConsole(error_msg)
+				# error_msg = SERIAL.ERROR.CODE + str(SERIAL.ERROR.PUBLISH_INVALID[0]) + ", "
+				# error_msg += SERIAL.ERROR.MSG + SERIAL.ERROR.PUBLISH_INVALID[1] 
+				# error_msg += " - " + str(Exception) + "\n" + SERIAL.ERROR.END
+				# printConsole(error_msg)
+
+		data = ""
         
 def runConsole():
 	startConsole()
