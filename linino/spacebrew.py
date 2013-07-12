@@ -227,8 +227,8 @@ class Spacebrew(object):
 		msg = full["message"]
 		if self.subscribers[msg['name']]:
 	 		if options.debug: print ( "[on_message] passing message to client name ", str( msg['name'] ) )
-	 		printConsole("from " + str(msg['name']).encode('ascii', 'ignore') + " received " + (msg['value']).encode('ascii', 'ignore') + '\n')
-	 		# toSubscriber(str(msg['name']), str(msg['value']))
+	 		# printConsole("from " + str(msg['name']).encode('ascii', 'ignore') + " received " + (msg['value']).encode('ascii', 'ignore') + '\n')
+	 		toSubscriber(str(msg['name']), str(msg['value']))
 
 	def on_error(self,ws,error):
  		if options.debug: print ( "[on_error] error encountered ", str( error ) )
@@ -244,8 +244,7 @@ class Spacebrew(object):
 			self.run()
 
 	def publish(self,name,value):
-		printConsole("publish 1 " + str(name) + " + " + str(value) + "\n")
- 		if options.debug: print ( "[publish] publishing message ", str(value))
+		# if options.debug: print ( "[publish] publishing message ", str(value))
 		publisher = self.publishers[name]
 
 		if publisher.type == "boolean":
@@ -260,9 +259,9 @@ class Spacebrew(object):
 			'type':publisher.type,
 			'value':value } }
 
-		printConsole("publish 2 " + str(message) + "\n")
+		if options.debug: printConsole("on: '" + name + "' published msg: " + str(message) + "\n")
 
- 		if options.debug: print ( "[publish] publishing full message ", str(message))
+		if options.debug: print ( "[publish] publishing full message ", str(message))
 		self.ws.send(json.write(message))
 
 	def run(self):
@@ -354,42 +353,24 @@ def readConsole():
 		index_name = data.find(SERIAL.PUB.NAME)
 		index_msg = data.find(SERIAL.PUB.MSG)
 
-		printConsole("indices - end: " + str(index_end) + ", name: " + str(index_name) + ", msg: " + str(index_name) + "\n")
+		# printConsole("indices - end: " + str(index_end) + ", name: " + str(index_name) + ", msg: " + str(index_name) + "\n")
 
 		if options.debug: print data
 
 		publish_route = "" 
 		msg = ""
 
-		if index_name >= 0 and index_msg > 0:
+		if index_name >= 0 and index_msg > index_name:
+
+			publish_route = data[(index_name + 1):index_msg]
+			msg = data[(index_msg + 1):index_end]
 
 			try:
-				# send the message to spacebrew
-				publish_route = data[(index_name + 1):index_msg]
-			except Exception:
-				error_msg = "issue extracting publisher name - start index: " + (index_name + 1)
-				error_msg += ", end index: " + index_msg
-				printConsole(error_msg)
-
-			try:
-				# send the message to spacebrew
-				msg = data[(index_msg + 1):index_end]
-			except Exception:
-				error_msg = "issue extracting msg - start index: " + (index_msg + 1)
-				error_msg += ", end index: " + index_end
-				printConsole(error_msg)
-
-			try:
-				if publish_route != "" and msg != "":
-					brew.publish(publish_route, msg)
+				brew.publish(publish_route, msg)
 			except Exception:
 				error_msg = "issue sending message via spacebrew, route: " + publish_route
-				error_msg += ", message: " + msg
+				error_msg += ", message: " + msg + "\n"
 				printConsole(error_msg)
-				# error_msg = SERIAL.ERROR.CODE + str(SERIAL.ERROR.PUBLISH_INVALID[0]) + ", "
-				# error_msg += SERIAL.ERROR.MSG + SERIAL.ERROR.PUBLISH_INVALID[1] 
-				# error_msg += " - " + str(Exception) + "\n" + SERIAL.ERROR.END
-				# printConsole(error_msg)
 
 		data = ""
         

@@ -14,7 +14,10 @@
 
 
  
-enum SBmsg { START = 2, END = 3, DIV = 7 };
+/**
+ * SPACEBREW VARIABLES
+ */
+enum SBmsg { START = char(29), END = char(30), DIV = char(31) };
 
 struct Publisher {
 	char *name;
@@ -36,6 +39,13 @@ int port;
 String description;
 Subscriber * subscribers;
 Publisher * publishers;
+String sub_name = "";
+String sub_msg = "";
+String sub_type = "";
+boolean read_name = false;
+boolean read_msg = false;
+int sub_name_max = 25;
+int sub_msg_max = 50;
 
 // make pid removing process into an object that is declared and instantiated 
 // in the set-up method so that these resources are relieved for later.
@@ -45,6 +55,13 @@ int const sbPidsLen = 4;
 char pid [6] = {'\0','\0','\0','\0','\0','\0'};
 int sbPids [4] = {-1, -1, -1, -1};
 
+
+/**
+ * APP VARIABLES
+ */
+int counter = 0;
+long last = 0;
+int interval = 2000;
 
 void setup() { 
     delay(1000);
@@ -57,69 +74,39 @@ void setup() {
 	Bridge.begin();
 	Serial.println("Bridge Started"); 
 
-	constructorSB("sandbox.spacebrew.cc", "aYun", "Arduino Yun spacebrew test");
+	spacebrew("sandbox.spacebrew.cc", "aYun", "Arduino Yun spacebrew test");
 	addPublish("string test", "string");
 	addPublish("range test", "range");
 	addPublish("boolean test", "boolean");
 	addSubscribe("string test", "string");
 	addSubscribe("range test", "range");
 	addSubscribe("boolean test", "boolean");
-	connectSB(); 
+	connect(); 
    
 	Console.buffer(64);
 //	Serial.println("Console Started"); 
 } 
 
 
-int counter = 0;
-long last = 0;
-int interval = 2000;
-
 void loop() { 
 	if ((millis() - last) > interval) {
-		String test_str = "test string";
-		String test_ran = "test range";
-		String test_bool = "test boolean";
+		String test_str = "string test";
+		String test_ran = "range test";
+		String test_bool = "boolean test";
+		String test_msg = "testing, testing, ";
+		test_msg += counter;
 		counter ++;
 
-		int test_num = 500;
 		boolean test_flag = true;
-
-		Serial.print(char(29));
-		Serial.print(test_str);
-		Serial.print(char(30));
-		Serial.print(test_str);
-		Serial.println(char(31));
-		Serial.flush();
-		send(test_str, test_str);
-
-		send(test_ran, test_num);
-		send(test_bool, test_flag);
-
-		Serial.print(char(29));
-		Serial.print(test_ran);
-		Serial.print(char(30));
-		Serial.print(test_num);
-		Serial.println(char(31));
-		Serial.flush();
-
-		Serial.print(char(29));
-		Serial.print(test_bool);
-		Serial.print(char(30));
-		Serial.print(test_flag);
-		Serial.println(char(31));
-		Serial.flush();
-
+		send(test_str, test_msg);
+		send(test_ran, 500);
+		send(test_bool, true);
 
 		last = millis();
 
 	}
 
-	monitorSB();
-	// while (Console.available() > 0) {
-	//     char c = Console.read();
-	//     Serial.print(c);
-	// }
+	monitor();
 } 
 
 
@@ -127,14 +114,14 @@ void loop() {
  ** SPACEBREW METHODS **
  ***********************/
 
-void constructorSB(const String _server, const String _name, const String _description) {
+void spacebrew(const String _server, const String _name, const String _description) {
 	name = _name;
 	server = _server;
 	description = _description;
 	port = 9000;
 }
 
-void addPublish(const String name, const String type) {
+void addPublish(const String name, String type) {
 	Publisher *p = new Publisher();
 	p->name = createString(name.length() + 1);
 	p->type = createString(type.length() + 1);
@@ -156,7 +143,7 @@ void addPublish(char * name, char * type) {
 	addPublish( String(name), String(type) );
 }
 
-void addSubscribe(const String name, const String type) {
+void addSubscribe(const String name, String type) {
 	Subscriber *p = new Subscriber();
 	p->name = createString(name.length() + 1);
 	p->type = createString(type.length() + 1);
@@ -178,7 +165,7 @@ void addSubscribe(char * name, char * type) {
 	addSubscribe( String(name), String(type) );
 }
 
-void connectSB() {
+void connect() {
 
 	killBrewPids();
 
@@ -224,71 +211,85 @@ void connectSB() {
 		}
 	}
 
-    Serial.println("connectSB - starting console");
+    Serial.println("connect - starting console");
 
 	Console.begin();
 	brew.runAsynchronously();
 	while (!Console) { ; }
 
-    Serial.println("connectSB - connected to spacebrew.py script");
+    Serial.println("connect - connected to spacebrew.py script");
 }
 
-String sub_buffer = "";
-
-void monitorSB() {
+void monitor() {
 	while (Console.available() > 0) {
 	    char c = Console.read();
-	    Serial.print(c);
-	    if (c == char(31)) {
+	    if (c == char(29)) {
+	    	read_name = true;
+	    } else if (c == char(30) || sub_name.length() > sub_name_max) {
+	    	read_name = false;
+	    	read_msg = true;
+	    } else if (c == char(31) || sub_msg.length() > sub_msg_max) {
+	    	read_msg = false;
 	    	onMessage();
 	    } else {
-	    	sub_buffer += c;
+			if (read_name == true) {
+				sub_name += c;
+			} else if (read_msg == true) {
+				sub_msg += c;
+			} else {
+			    Serial.print(c);
+			}	    	
 	    }
 	}	
 }
 
 void onMessage() {
-	int index_name = sub_buffer.indexOf(char(29));
-	int index_msg = sub_buffer.indexOf(char(30));
-	if (index_name > 0 && index_msg > 0) {
-		Serial.print("publisher: ");		
-		Serial.print(sub_buffer.substring(index_name + 1, index_msg));		
-		Serial.print(" - msg: ");		
-		Serial.println(sub_buffer.substring((index_msg + 1), sub_buffer.length()));		
+	Serial.print("\npublisher: ");		
+	Serial.print(sub_name);		
+	Serial.print(" - msg: ");		
+	Serial.println(sub_msg);		
+
+	if (subscribers != NULL) {
+		Subscriber *curr = subscribers;
+		while((curr != NULL) && (sub_type == "")){
+			if (sub_name.equals(curr->name) == true) {
+				Serial.print("\tthis is a subscriber of type: ");		
+				Serial.println(curr->type);		
+				sub_type = curr->type;
+			}
+			if (curr->next == NULL) curr = NULL;
+			else curr = curr->next;
+		}
 	}
-	sub_buffer = "";
+
+	sub_name = "";
+	sub_msg = "";
+	sub_type = "";
 }
 
-boolean send(String name, String value){
+boolean send(const String name, const String value){
 	Console.print(char(29));
 	Console.print(name);
 	Console.print(char(30));
 	Console.print(value);
 	Console.print(char(31));
 	Console.flush();
-
-	Serial.print(char(29));
-	Serial.print(name);
-	Serial.print(char(30));
-	Serial.print(value);
-	Serial.println(char(31));
-	Serial.flush();
 	return true;
 }
 
-boolean send(String& name, bool value){
+boolean send(const String name, bool value){
 	return send(name, (value ? "true" : "false"));
 }
 
-boolean send(String& name, int value) {
+boolean send(const String name, int value) {
 	return send(name, String(value));
 }
 
-bool send(String& name, long value) {
+bool send(const String name, long value) {
 	return send(name, String(value));
 }
 
-bool send(String& name, float value) {
+bool send(const String name, float value) {
 	return send(name, String(value));
 }
 
