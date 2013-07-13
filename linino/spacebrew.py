@@ -23,8 +23,6 @@ class SERIAL:
 		END 			= chr(31)
 		PUBLISH_INVALID = (301, 'not able to publish message to spacebrew\n')
 
-
-
 class OPT:
 	SERVER 			= '--server'
 	PORT 			= '--port'
@@ -184,7 +182,6 @@ class Spacebrew(object):
 		self.publishers = {}
 		self.subscribers = {}
 		self.ws = None
-		# self.events = self.Events(["open", "close", "error", "message"])
 
 	def addPublisher(self, name, brewType="string", default=None):
  		if options.debug: print ( "[addPublisher] adding a new publisher ", name, " and type ", brewType )
@@ -199,9 +196,6 @@ class Spacebrew(object):
 			raise ConfigurationError(self,"Can not add a new subscriber to a running Spacebrew instance (yet).")
 		else:
 			self.subscribers[name]=self.Subscriber(name, brewType, default)
-
-	# def addListener(self, name, target):
-	# 	self.events.register(name, target)
 
 	def makeConfig(self):
 		subs = map(lambda x:x.makeConfig(),self.subscribers.values())
@@ -219,7 +213,6 @@ class Spacebrew(object):
 		ws.send( json.write(self.makeConfig()) )
  		self.connected = True
  		if options.debug: print ( "[on_open] client configured with msg ", str(self.makeConfig()) )
-		# thread.start_new_thread(startConsole, ())
 
 	def on_message(self,ws,message):
 	 	if options.debug: print ( "[on_message] message received ", str(message) )

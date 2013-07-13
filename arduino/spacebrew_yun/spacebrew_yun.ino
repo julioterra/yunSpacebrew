@@ -17,7 +17,7 @@
 /**
  * SPACEBREW VARIABLES
  */
-enum SBmsg { START = char(29), END = char(30), DIV = char(31) };
+enum SBmsg { MSG_START = char(29), MSG_DIV = char(30), MSG_END = char(31) };
 
 struct Publisher {
 	char *name;
@@ -152,7 +152,9 @@ void addSubscribe(const String name, String type) {
 
 	if (subscribers == NULL){
 		subscribers = p;
-	} else {
+	} 
+
+	else {
 		Subscriber *curr = subscribers;
 		while(curr->next != NULL){
 			curr = curr->next;
@@ -223,12 +225,12 @@ void connect() {
 void monitor() {
 	while (Console.available() > 0) {
 	    char c = Console.read();
-	    if (c == char(29)) {
+	    if (c == char(MSG_START)) {
 	    	read_name = true;
-	    } else if (c == char(30) || sub_name.length() > sub_name_max) {
+	    } else if (c == char(MSG_DIV) || sub_name.length() > sub_name_max) {
 	    	read_name = false;
 	    	read_msg = true;
-	    } else if (c == char(31) || sub_msg.length() > sub_msg_max) {
+	    } else if (c == char(MSG_END) || sub_msg.length() > sub_msg_max) {
 	    	read_msg = false;
 	    	onMessage();
 	    } else {
@@ -244,17 +246,10 @@ void monitor() {
 }
 
 void onMessage() {
-	Serial.print("\npublisher: ");		
-	Serial.print(sub_name);		
-	Serial.print(" - msg: ");		
-	Serial.println(sub_msg);		
-
 	if (subscribers != NULL) {
 		Subscriber *curr = subscribers;
 		while((curr != NULL) && (sub_type == "")){
 			if (sub_name.equals(curr->name) == true) {
-				Serial.print("\tthis is a subscriber of type: ");		
-				Serial.println(curr->type);		
 				sub_type = curr->type;
 			}
 			if (curr->next == NULL) curr = NULL;
@@ -262,10 +257,51 @@ void onMessage() {
 		}
 	}
 
+	if ( sub_type.equals("range") ) {
+		onRangeMessage( sub_name, int(sub_msg.toInt()) );
+	} else if ( sub_type.equals("boolean") ) {
+		onBooleanMessage( sub_name, ( sub_msg.equals("false") ? false : true ) );
+	} else if ( sub_type.equals("string") ) {
+		onStringMessage( sub_name, sub_msg );
+	} else {
+		onCustomMessage( sub_name, sub_msg, sub_type );
+	}
+
 	sub_name = "";
 	sub_msg = "";
 	sub_type = "";
 }
+
+void onRangeMessage( String name, int value ) {
+	Serial.print( "Range message on publisher: '" );		
+	Serial.print( name );		
+	Serial.print( "' - msg: " );		
+	Serial.println( value );		
+}
+
+void onBooleanMessage( String name, boolean value ) {
+	Serial.print( "Boolean message on publisher: '" ) ;		
+	Serial.print( name);		
+	Serial.print( "' - msg: " );		 
+	Serial.println( (value ? "true" : "false") );		
+}
+
+void onStringMessage( String name, String value ) {
+	Serial.print( "String message on publisher: '") ;		
+	Serial.print( name );		
+	Serial.print( "' - msg: " );		
+	Serial.println( value );		
+}
+
+void onCustomMessage( String name, String value, String type) {
+	Serial.print( "Custom message on publisher: '") ;		
+	Serial.print( name );		
+	Serial.print( "', of type: '" );		
+	Serial.print( type );		
+	Serial.print( "' - msg: " );		
+	Serial.println( value );		
+}
+
 
 boolean send(const String name, const String value){
 	Console.print(char(29));
