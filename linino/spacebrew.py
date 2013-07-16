@@ -13,6 +13,7 @@ import thread
 class SERIAL:
 
 	class PUB:
+		CONNECTED		= chr(28)
 		NAME 			= chr(29)
 		MSG				= chr(30)
 		END 			= chr(31)
@@ -138,14 +139,13 @@ class Spacebrew(object):
 			return repr(self.explanation)
 
 	class Slot(object):
-		def __init__(self, name, brewType, default = None):
+		def __init__(self, name, brewType):
 			self.name = name
 			self.type = brewType
 			self.value = None
-			self.default = default
 
 		def makeConfig(self):
-			conf = { 'name':self.name, 'type':self.type, 'default':self.default }
+			conf = { 'name':self.name, 'type':self.type }
 			return conf
 		
 	class Publisher(Slot):
@@ -158,18 +158,13 @@ class Spacebrew(object):
 		def __init__(self, events):
 			self.callbacks = {}
 			for event in events:
-				# if options.debug: print("creating method array for " + event)
 				self.callbacks[event] = []
 		def register(self, event, target):
-			# if options.debug: print("adding method to " + event)
 			assert type(self.callbacks[event]) is list
-			# if options.debug: print("added method to " + event)
 			self.callbacks[event].append(target)
 		def call(self, event):
-			# if options.debug: print("calling method for " + event)
 			assert type(self.callbacks[event]) is list
 			for target in self.callbacks[event]:
-				# if options.debug: print("found method for " + event)
 				target()
 
 	def __init__(self, name, description="", server="sandbox.spacebrew.cc", port=9000):
@@ -182,20 +177,16 @@ class Spacebrew(object):
 		self.publishers = {}
 		self.subscribers = {}
 		self.ws = None
+		self._console = {}
+
+	def console(self, _console = {}):
+		self._console = _console
 
 	def addPublisher(self, name, brewType="string", default=None):
- 		if options.debug: print ( "[addPublisher] adding a new publisher ", name, " and type ", brewType )
-		if self.connected:
-			raise ConfigurationError(self,"Can not add a new publisher to a running Spacebrew instance (yet).")
-		else:
-			self.publishers[name]=self.Publisher(name, brewType, default)
+		if not self.connected: self.publishers[name] = self.Publisher(name, brewType)
 	
-	def addSubscriber(self, name, brewType="string", default=None):
- 		if options.debug: print ( "[addSubscriber] adding a new subscriber ", name, " and type ", brewType )
-		if self.connected:
-			raise ConfigurationError(self,"Can not add a new subscriber to a running Spacebrew instance (yet).")
-		else:
-			self.subscribers[name]=self.Subscriber(name, brewType, default)
+	def addSubscriber(self, name, brewType="string"):
+		if not self.connected: self.subscribers[name] = self.Subscriber(name, brewType)
 
 	def makeConfig(self):
 		subs = map(lambda x:x.makeConfig(),self.subscribers.values())
@@ -208,36 +199,28 @@ class Spacebrew(object):
 			}}
 		return config
 
-	def on_open(self, ws):
- 		if options.debug: print ( "[on_open] conection openned" , str(self.makeConfig()) )
+	def on_open( self, ws ):
 		ws.send( json.write(self.makeConfig()) )
+ 		self._console.log( SERIAL.PUB.CONNECTED )
  		self.connected = True
- 		if options.debug: print ( "[on_open] client configured with msg ", str(self.makeConfig()) )
 
-	def on_message(self,ws,message):
-	 	if options.debug: print ( "[on_message] message received ", str(message) )
-		full = json.read(message)
+	def on_message( self, ws, message ):
+		full = json.read( message )
 		msg = full["message"]
 		if self.subscribers[msg['name']]:
-	 		if options.debug: print ( "[on_message] passing message to client name ", str( msg['name'] ) )
-	 		# printConsole("from " + str(msg['name']).encode('ascii', 'ignore') + " received " + (msg['value']).encode('ascii', 'ignore') + '\n')
-	 		toSubscriber(str(msg['name']), str(msg['value']))
+	 		# self._console.log("from " + str(msg['name']).encode('ascii', 'ignore') + " received " + (msg['value']).encode('ascii', 'ignore') + '\n')
+	 		if self._console: self._console.publish(str(msg['name']), str(msg['value']))
 
 	def on_error(self,ws,error):
  		if options.debug: print ( "[on_error] error encountered ", str( error ) )
-		# self.on_close(ws)
 
 	def on_close(self, ws):
- 		if options.debug: print ( "[on_close] connection closing " )
 		self.connected = False
- 		# self.events.call("close")
 		while self.started and not self.connected:
 			time.sleep(5)
-	 		if options.debug: print ( "[on_close] trying to re-establish connection " )
 			self.run()
 
 	def publish(self,name,value):
-		# if options.debug: print ( "[publish] publishing message ", str(value))
 		publisher = self.publishers[name]
 
 		if publisher.type == "boolean":
@@ -252,12 +235,11 @@ class Spacebrew(object):
 			'type':publisher.type,
 			'value':value } }
 
-		if options.debug: printConsole("on: '" + name + "' published msg: " + str(message) + "\n")
+		if options.debug: self._console.log("on: '" + name + "' published msg: " + str(message) + "\n")
 
-		if options.debug: print ( "[publish] publishing full message ", str(message))
 		self.ws.send(json.write(message))
 
-	def run(self):
+	def start(self):
 		pass
 		self.ws = websocket.WebSocketApp( "ws://{0}:{1}".format(self.server,self.port),
 						on_message = lambda ws, msg: self.on_message(ws, msg),
@@ -266,21 +248,121 @@ class Spacebrew(object):
 						on_open = lambda ws: self.on_open(ws)
 						)
 		self.ws.on_open = lambda ws: self.on_open(ws)
-  		if options.debug: print ( "[run] running websocket " )
 		self.ws.run_forever()
 
-	def start(self):
-		self.started = True
-		self.run()
+	def run(self):
+		try:
+			self.start()
+			self.started = True
+		finally:
+			self.stop()
+			self.started = False
 
 	def stop(self):
 		self.started = False
 		if self.ws is not None:
 			self.ws.close()
 
-def runSpacebrew():
+# def runSpacebrew():
+# 	try:
+# 		brew.start()
+# 	finally:
+# 		brew.stop()
+
+
+class Console(object):
+	pass
+
+	def __init__(self, brew):
+		self.console = socket(AF_INET, SOCK_STREAM)
+		self.connected = False
+		self.msg_buffer = ""
+		self.brew = brew
+
+	def start(self):
+		try:
+			self.console = socket(AF_INET, SOCK_STREAM)
+			self.console.connect(('localhost', 6571))
+			self.connected = True
+			self.console.send("Spacebrew.py script running")
+			thread.start_new_thread(self.brew.run, ())
+
+		except:
+			self.connected = False
+
+	def read(self):
+		if not self.connected: return
+
+		index_end = -1
+
+		new_data = self.console.recv(1024)
+
+	    # if new data was received then add it buffer and check if end message was provided
+		if new_data:
+			self.msg_buffer += new_data
+			index_end = self.msg_buffer.find(SERIAL.PUB.END)
+
+		if new_data == '':
+			console_running = False
+			self.console.close()
+			return None
+
+		# if message end was found, then look for the start and div marker
+		if index_end > 0:
+			index_name = self.msg_buffer.find(SERIAL.PUB.NAME)
+			index_msg = self.msg_buffer.find(SERIAL.PUB.MSG)
+
+			publish_route = "" 
+			msg = ""
+
+			if index_name >= 0 and index_msg > index_name:
+
+				publish_route = self.msg_buffer[(index_name + 1):index_msg]
+				msg = self.msg_buffer[(index_msg + 1):index_end]
+
+				try:
+					self.brew.publish(publish_route, msg)
+				except Exception:
+					error_msg = "issue sending message via spacebrew, route: " + publish_route
+					error_msg += ", message: " + msg + "\n"
+					self.log(error_msg)
+
+			self.msg_buffer = ""
+
+	def run(self):
+		self.start()
+		try:
+			while True:
+				if self.connected: 
+					self.read()
+		finally:
+			self.console.close()
+
+	def publish(self, name, message):
+		try:
+			full_msg = SERIAL.PUB.NAME + name + SERIAL.PUB.MSG + message + SERIAL.PUB.END
+			self.console.send(full_msg)
+		except:
+			pass
+
+	def log(self, message):
+		self.console.send(message)
+
+
+if __name__ == "__main__":
+# 	if options.debug: print """
+# This is the Spacebrew module. 
+# See spacebrew_ex.py for usage examples.
+# """
+
+	parseInput(sys.argv[1:])
+
+	global brew, data, console, console_running
+
+	brew = {}
+	console = {}
+
 	if options.debug: print ( "[runSpacebrew]")
-	global brew
 
 	brew = Spacebrew( 	name=options.name, 
 						server=options.server, 
@@ -292,111 +374,12 @@ def runSpacebrew():
 	for pub in options.pubs:
 		brew.addPublisher(pub["name"], pub["type"])
 
-	try:
-		brew.start()
-	finally:
-		brew.stop()
-
-class Console(object):
-	pass
-
-	def __init__(self, brew):
-		self.brew = brew
-		pass
-
-		# 02 - start message
-		# 03 - end message
-
-def startConsole():
-	global console, console_running
-
-	try:
-		console = socket(AF_INET, SOCK_STREAM)
-		console.connect(('localhost', 6571))
-		console_running = True
-		if options.debug: print "[startConsole] able to connect" 
-		console.send("\n\nconnected to spacebrew.py\n\n")
-	except:
-		console_running = False
-		if options.debug: print "[startConsole] not able to connect" 
-
-
-def readConsole():
-	global console, data
-
-	index_end = -1
-
-	new_data = console.recv(1024)
-
-    # if new data was received then add it buffer and check if end message was provided
-	if new_data:
-		data += new_data
-		index_end = data.find(SERIAL.PUB.END)
-
-	if new_data == '':
-		if options.debug: print "[runConsole] closing connection to console"
-		console_running = False
-		console.close()
-		return None
-
-	# if message end was found, then look for the start and div marker
-	if index_end > 0:
-		# printConsole("full message: " + data + "\n")
-
-		index_name = data.find(SERIAL.PUB.NAME)
-		index_msg = data.find(SERIAL.PUB.MSG)
-
-		# printConsole("indices - end: " + str(index_end) + ", name: " + str(index_name) + ", msg: " + str(index_name) + "\n")
-
-		if options.debug: print data
-
-		publish_route = "" 
-		msg = ""
-
-		if index_name >= 0 and index_msg > index_name:
-
-			publish_route = data[(index_name + 1):index_msg]
-			msg = data[(index_msg + 1):index_end]
-
-			try:
-				brew.publish(publish_route, msg)
-			except Exception:
-				error_msg = "issue sending message via spacebrew, route: " + publish_route
-				error_msg += ", message: " + msg + "\n"
-				printConsole(error_msg)
-
-		data = ""
-        
-def runConsole():
-	startConsole()
-	try:
-		while True:
-			if console_running:
-				readConsole()
-	finally:
-		console.close()
-
-def toSubscriber(name, message):
-	try:
-		full_msg = SERIAL.PUB.NAME + name + SERIAL.PUB.MSG + message + SERIAL.PUB.END
-		console.send(full_msg)
-	except:
-		pass
-
-def printConsole(message):
-	console.send(message)
-
-if __name__ == "__main__":
-# 	if options.debug: print """
-# This is the Spacebrew module. 
-# See spacebrew_ex.py for usage examples.
-# """
-	global brew, data, console, console_running
-
 	data = ""
 
-	parseInput(sys.argv[1:])
+	console = Console(brew)
 
-	thread.start_new_thread(runSpacebrew, ())
+	brew.console(console)
 
-	runConsole()
+	# thread.start_new_thread(runSpacebrew, ())
+
+	console.run()
