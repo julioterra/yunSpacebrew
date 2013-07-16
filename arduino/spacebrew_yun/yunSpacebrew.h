@@ -54,6 +54,7 @@ class SpacebrewYun {
 	private:
 		// static bool m_bOpen;
 		// static bool m_bSendConfig;
+		static boolean _connected;
 
 		String name;
 		String server;

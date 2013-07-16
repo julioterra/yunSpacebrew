@@ -85,7 +85,6 @@ void setup() {
 	connect(); 
    
 	Console.buffer(64);
-//	Serial.println("Console Started"); 
 } 
 
 

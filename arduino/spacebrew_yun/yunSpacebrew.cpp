@@ -6,6 +6,7 @@ SpacebrewYun::SpacebrewYun(const String _name, const String _description) {
 	server = "sandbox.spacebrew.cc";
 	description = _description;
 	port = 9000;
+	_connected = false;
 
 	sub_name = "";
 	sub_msg = "";
@@ -129,6 +130,9 @@ void SpacebrewYun::monitor() {
 	    char c = Console.read();
 	    if (c == char(MSG_START)) {
 	    	read_name = true;
+	    } else if (c == char(MSG_CONNECTED)) {
+	    	_connected = true;
+	    	Serial.println("Connected to Spacebrew");
 	    } else if (c == char(MSG_DIV) || sub_name.length() > sub_name_max) {
 	    	read_name = false;
 	    	read_msg = true;
@@ -145,6 +149,10 @@ void SpacebrewYun::monitor() {
 			}	    	
 	    }
 	}	
+}
+
+boolean SpacebrewYun::connected() {
+	return _connected;
 }
 
 void SpacebrewYun::onMessage() {
