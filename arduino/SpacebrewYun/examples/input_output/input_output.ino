@@ -51,19 +51,14 @@ void loop() {
 	sb.monitor();
 	if ( sb.connected() ) {
 		if ( (millis() - last) > interval ) {
-			String test_str = "string test";
-			String test_ran = "range test";
-			String test_bool = "boolean test";
-			String test_cust = "custom test";
-
 			String test_str_msg = "testing, testing, ";
 			test_str_msg += counter;
 			counter ++;
 
-			sb.send(test_str, test_str_msg);
-			sb.send(test_ran, 500);
-			sb.send(test_bool, true);
-			sb.send(test_cust, "youre loco");
+			sb.send("string test", test_str_msg);
+			sb.send("range test", 500);
+			sb.send("boolean test", true);
+			sb.send("custom test", "youre loco");
 
 			last = millis();
 
@@ -86,7 +81,7 @@ void handleString (String route, String value) {
 }
 
 void handleBoolean (String route, boolean value) {
-	Serial.print("Boolena msg ");
+	Serial.print("Boolen msg ");
 	Serial.print(route);
 	Serial.print(", value ");
 	Serial.println(value ? "true" : "false");
