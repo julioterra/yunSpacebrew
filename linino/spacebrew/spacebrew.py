@@ -210,7 +210,6 @@ class Spacebrew(object):
 	 		if self._console: self._console.publish(str(msg['name']), str(msg['value']))
 
 	def on_error(self,ws,error):
- 		if options.debug: print ( "[on_error] error encountered ", str( error ) )
  		if self._console: 
  			error_msg = SERIAL.CONNECTION.ERROR + str(error) + SERIAL.MSG.END
 	 		self._console.log( error_msg )
@@ -268,13 +267,6 @@ class Spacebrew(object):
 		if self.ws is not None:
 			self.ws.close()
 
-# def runSpacebrew():
-# 	try:
-# 		brew.start()
-# 	finally:
-# 		brew.stop()
-
-
 class Console(object):
 	pass
 
@@ -289,7 +281,6 @@ class Console(object):
 			self.console = socket(AF_INET, SOCK_STREAM)
 			self.console.connect(('localhost', 6571))
 			self.connected = True
-			self.console.send("Spacebrew.py script running\n")
 			thread.start_new_thread(self.brew.run, ())
 
 		except:
@@ -328,8 +319,7 @@ class Console(object):
 				try:
 					self.brew.publish(publish_route, msg)
 				except Exception:
-					error_msg = "issue sending message via spacebrew, route: " + publish_route
-					error_msg += ", message: " + msg + "\n"
+					error_msg = "issue sending message via spacebrew, route: " + publish_route + "\n"
 					self.log(error_msg)
 
 			self.msg_buffer = ""
@@ -367,8 +357,6 @@ if __name__ == "__main__":
 	brew = {}
 	console = {}
 
-	if options.debug: print ( "[runSpacebrew]")
-
 	brew = Spacebrew( 	name=options.name, 
 						server=options.server, 
 						description=options.description,
@@ -384,7 +372,5 @@ if __name__ == "__main__":
 	console = Console(brew)
 
 	brew.console(console)
-
-	# thread.start_new_thread(runSpacebrew, ())
 
 	console.run()
