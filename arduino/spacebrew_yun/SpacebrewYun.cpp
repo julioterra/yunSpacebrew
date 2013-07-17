@@ -1,7 +1,7 @@
 #include "SpacebrewYun.h"
 
 
-SpacebrewYun::SpacebrewYun(const String _name, const String _description) {
+SpacebrewYun::SpacebrewYun(const String& _name, const String& _description) {
 	name = _name;
 	server = "sandbox.spacebrew.cc";
 	description = _description;
@@ -24,9 +24,43 @@ SpacebrewYun::SpacebrewYun(const String _name, const String _description) {
 	for ( int i = 0; i < sbPidsLen; i++ ) {
 		sbPids [i] = '\0';
 	}
+
+	Console.buffer(64);
+
 }
 
-void SpacebrewYun::addPublish(const String name, String type) {
+boolean SpacebrewYun::_connected = false;
+SpacebrewYun::OnBooleanMessage SpacebrewYun::_onBooleanMessage = NULL;
+SpacebrewYun::OnRangeMessage SpacebrewYun::_onRangeMessage = NULL;
+SpacebrewYun::OnStringMessage SpacebrewYun::_onStringMessage = NULL;
+SpacebrewYun::OnCustomMessage SpacebrewYun::_onCustomMessage = NULL;
+SpacebrewYun::OnSBOpen SpacebrewYun::_onOpen = NULL;
+SpacebrewYun::OnSBClose SpacebrewYun::_onClose = NULL;
+SpacebrewYun::OnSBError SpacebrewYun::_onError = NULL;
+
+void SpacebrewYun::onOpen(OnSBOpen function){
+  _onOpen = function;
+}
+void SpacebrewYun::onClose(OnSBClose function){
+  _onClose = function;
+}
+void SpacebrewYun::onRangeMessage(OnRangeMessage function){
+  _onRangeMessage = function;
+}
+void SpacebrewYun::onStringMessage(OnStringMessage function){
+  _onStringMessage = function;
+}
+void SpacebrewYun::onBooleanMessage(OnBooleanMessage function){
+  _onBooleanMessage = function;
+}
+void SpacebrewYun::onCustomMessage(OnCustomMessage function){
+  _onCustomMessage = function;
+}
+void SpacebrewYun::onError(OnSBError function){
+  _onError = function;
+}
+
+void SpacebrewYun::addPublish(const String& name, const String& type) {
 	Publisher *p = new Publisher();
 	p->name = createString(name.length() + 1);
 	p->type = createString(type.length() + 1);
@@ -44,7 +78,7 @@ void SpacebrewYun::addPublish(const String name, String type) {
 	}
 }
 
-void SpacebrewYun::addSubscribe(const String name, String type) {
+void SpacebrewYun::addSubscribe(const String& name, const String& type) {
 	Subscriber *p = new Subscriber();
 	p->name = createString(name.length() + 1);
 	p->type = createString(type.length() + 1);
@@ -64,19 +98,10 @@ void SpacebrewYun::addSubscribe(const String name, String type) {
 	}
 }
 
-void SpacebrewYun::connect() {
-	connect(server, port);
-}
-
-//void SpacebrewYun::connect(String _server) {
-//	server = _server;
-//	connect(server, port);
-//}
-
-void SpacebrewYun::connect(const String _server&, int port = 9000) {
+void SpacebrewYun::connect(String _server, int _port) {
 	server = _server;
-	port = _port;
-
+	port = _port; 
+	
 	killPids();
 
  	brew.begin("python"); // Process should launch the "curl" command
@@ -121,13 +146,13 @@ void SpacebrewYun::connect(const String _server&, int port = 9000) {
 		}
 	}
 
-    Serial.println("connect - starting console");
+	Serial.println("connect - starting console");
 
 	Console.begin();
 	brew.runAsynchronously();
 	while (!Console) { ; }
 
-    Serial.println("connect - connected to spacebrew.py script");
+	Serial.println("connect - connected to spacebrew.py script");
 }
 
 void SpacebrewYun::monitor() {
@@ -138,6 +163,9 @@ void SpacebrewYun::monitor() {
 	    } else if (c == char(MSG_CONNECTED)) {
 	    	_connected = true;
 	    	Serial.println("Connected to Spacebrew");
+			if (_onOpen != NULL){
+				_onOpen();
+			}
 	    } else if (c == char(MSG_DIV) || sub_name.length() > sub_name_max) {
 	    	read_name = false;
 	    	read_msg = true;
@@ -157,7 +185,7 @@ void SpacebrewYun::monitor() {
 }
 
 boolean SpacebrewYun::connected() {
-	return _connected;
+	return SpacebrewYun::_connected;
 }
 
 void SpacebrewYun::onMessage() {
@@ -173,13 +201,29 @@ void SpacebrewYun::onMessage() {
 	}
 
 	if ( sub_type.equals("range") ) {
-		onRangeMessage( sub_name, int(sub_msg.toInt()) );
+		if (_onRangeMessage != NULL) {
+			_onRangeMessage( sub_name, int(sub_msg.toInt()) );
+		} else {
+			Serial.println(F("range message received, no callback method is registered"));
+		}
 	} else if ( sub_type.equals("boolean") ) {
-		onBooleanMessage( sub_name, ( sub_msg.equals("false") ? false : true ) );
+		if (_onBooleanMessage != NULL) {
+			_onBooleanMessage( sub_name, ( sub_msg.equals("false") ? false : true ) );
+		} else {
+			Serial.println(F("boolean message received, no callback method is registered"));
+		}
 	} else if ( sub_type.equals("string") ) {
-		onStringMessage( sub_name, sub_msg );
+		if (_onStringMessage != NULL) {
+			_onStringMessage( sub_name, sub_msg );	
+		} else {
+			Serial.println(F("string message received, no callback method is registered"));
+		}
 	} else {
-		onCustomMessage( sub_name, sub_msg, sub_type );
+		if (_onCustomMessage != NULL) {
+			_onCustomMessage( sub_name, sub_msg, sub_type );
+		} else {
+			Serial.println(F("custom message received, no callback method is registered"));
+		}
 	}
 
 	sub_name = "";
@@ -187,62 +231,41 @@ void SpacebrewYun::onMessage() {
 	sub_type = "";
 }
 
-void SpacebrewYun::onRangeMessage( String name, int value ) {
-	Serial.print( "Range message on publisher: '" );		
-	Serial.print( name );		
-	Serial.print( "' - msg: " );		
-	Serial.println( value );		
-}
 
-void SpacebrewYun::onBooleanMessage( String name, boolean value ) {
-	Serial.print( "Boolean message on publisher: '" ) ;		
-	Serial.print( name);		
-	Serial.print( "' - msg: " );		 
-	Serial.println( (value ? "true" : "false") );		
-}
-
-void SpacebrewYun::onStringMessage( String name, String value ) {
-	Serial.print( "String message on publisher: '") ;		
-	Serial.print( name );		
-	Serial.print( "' - msg: " );		
-	Serial.println( value );		
-}
-
-void SpacebrewYun::onCustomMessage( String name, String value, String type) {
-	Serial.print( "Custom message on publisher: '") ;		
-	Serial.print( name );		
-	Serial.print( "', of type: '" );		
-	Serial.print( type );		
-	Serial.print( "' - msg: " );		
-	Serial.println( value );		
-}
-
-
-boolean SpacebrewYun::send(const String name, const String value){
+boolean SpacebrewYun::send(const String& name, const String& value){
 	Console.print(char(29));
 	Console.print(name);
 	Console.print(char(30));
 	Console.print(value);
 	Console.print(char(31));
 	Console.flush();
+
+
+	// Serial.print("SEND ");
+	// Serial.print(char(29));
+	// Serial.print(name);
+	// Serial.print(char(30));
+	// Serial.print(value);
+	// Serial.println(char(31));
+
 	return true;
 }
 
-boolean SpacebrewYun::send(const String name, bool value){
-	return send(name, (value ? "true" : "false"));
-}
-
-boolean SpacebrewYun::send(const String name, int value) {
-	return send(name, String(value));
-}
-
-boolean SpacebrewYun::send(const String name, long value) {
-	return send(name, String(value));
-}
-
-boolean SpacebrewYun::send(const String name, float value) {
-	return send(name, String(value));
-}
+//boolean SpacebrewYun::send(const String & name, boolean value){
+//	return send(name, (value ? "true" : "false"));
+//}
+//
+//boolean SpacebrewYun::send(const String & name, int value) {
+//	return send(name, String(value));
+//}
+//
+//boolean SpacebrewYun::send(const String & name, long value) {
+//	return send(name, String(value));
+//}
+//
+//boolean SpacebrewYun::send(const String & name, float value) {
+//	return send(name, String(value));
+//}
 
 
 /**
@@ -252,7 +275,7 @@ void SpacebrewYun::getPids() {
 
 	// request the pid of all python processes
 	pids.begin("python");
-	pids.addParameter("/usr/lib/python2.7/getPids.py"); // Process should launch the "curl" command
+	pids.addParameter("/usr/lib/python2.7/getSbPid.py"); // Process should launch the "curl" command
 	pids.run();
 
 	Serial.println("getPids - process running");
@@ -316,7 +339,3 @@ void SpacebrewYun::killPids() {
 }
 
 
-static char * SpacebrewYun::createString(int len){
-	char * out = ( char * )malloc( len + 1 );
-	return out;
-}

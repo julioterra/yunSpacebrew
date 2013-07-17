@@ -3,9 +3,11 @@
 #define YUNSPACEBREW_H
 
 #include "Arduino.h"
-#include "Process.h"
+#include <Bridge.h>
+#include <Console.h>
+#include <Process.h>
 
-enum SBmsg { MSG_START = char(29), MSG_DIV = char(30), MSG_END = char(31) };
+enum SBmsg { MSG_CONNECTED = char(28), MSG_START = char(29), MSG_DIV = char(30), MSG_END = char(31) };
 
 struct Publisher {
 	char *name;
@@ -27,26 +29,46 @@ int const sbPidsLen = 4;
 class SpacebrewYun {
 
 	public:
-	    SpacebrewYun(const String clientName, const String description);
-	    void addPublish(const String name, const String type);
-	    void addSubscribe(const String name, const String type);
-	    void connect(const String hostname, int port = 9000);
-//	    void connect(const String hostname);
-	    void connect();
+	    SpacebrewYun(const String&, const String&);
+	    void addPublish(const String&, const String&);
+	    void addSubscribe(const String&, const String&);
+
+	    void connect(String, int);
+
+		void connect() {
+			connect(server, port);
+		}
+
+		void connect(String _server) {
+			connect(String(_server), port);
+		}
+
 	    void monitor();
+	    void onMessage();
 	    boolean connected();
-		static char * createString(int len);
 
-	    bool send(const String name, const String value);
-	    bool send(const String name, int value);
-	    bool send(const String name, bool value);
-	    bool send(const String name, float value);
-	    bool send(const String name, long value);
+	    boolean send(const String&, const String&);
 
-	    typedef void (*OnBooleanMessage)(const String name, boolean value);
-	    typedef void (*OnRangeMessage)(const String name, int value);
-	    typedef void (*OnStringMessage)(const String name, const String value);
-	    typedef void (*onCustomMessage)(const String name, const String value, const String type);
+		boolean send(const String & name, bool value){
+			return send(name, (value ? "true" : "false"));
+		}
+
+		boolean send(const String & name, int value) {
+			return send(name, String(value));
+		}
+
+		boolean send(const String & name, long value) {
+			return send(name, String(value));
+		}
+
+		boolean send(const String & name, float value) {
+			return send(name, String(value));
+		}
+
+	    typedef void (*OnBooleanMessage)(String name, boolean value);
+	    typedef void (*OnRangeMessage)(String name, int value);
+	    typedef void (*OnStringMessage)(String name, String value);
+	    typedef void (*OnCustomMessage)(String name, String value, const String type);
 	    typedef void (*OnSBOpen)();
 	    typedef void (*OnSBClose)(int code, const String message);
 	    typedef void (*OnSBError)(const String message);
@@ -56,24 +78,26 @@ class SpacebrewYun {
 	    void onRangeMessage(OnRangeMessage function);
 	    void onStringMessage(OnStringMessage function);
 	    void onBooleanMessage(OnBooleanMessage function);
-	    void onOtherMessage(OnStringMessage function);
+	    void onCustomMessage(OnCustomMessage function);
 	    void onError(OnSBError function);
+	    void killPids();
+	    void getPids();
+
 
 	private:
-		// static bool m_bOpen;
-		// static bool m_bSendConfig;
-		static boolean _connected;
 
+		Process brew;
 		String name;
 		String server;
 		String description;
+		static boolean _connected;
 		int port;
 
 		/**Output should be at least 5 cells**/
 		static OnBooleanMessage _onBooleanMessage;
 		static OnRangeMessage _onRangeMessage;
 		static OnStringMessage _onStringMessage;
-		static OnStringMessage _onOtherMessage;
+		static OnCustomMessage _onCustomMessage;
 		static OnSBOpen _onOpen;
 		static OnSBClose _onClose;
 		static OnSBError _onError;
@@ -92,6 +116,12 @@ class SpacebrewYun {
 		Process pids;
 		char pid [6];
 		int sbPids [4];
+
+
+static char * createString(int len){
+	char * out = ( char * )malloc( len + 1 );
+	return out;
+}		
 
 };
 

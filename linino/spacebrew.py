@@ -284,7 +284,7 @@ class Console(object):
 			self.console = socket(AF_INET, SOCK_STREAM)
 			self.console.connect(('localhost', 6571))
 			self.connected = True
-			self.console.send("Spacebrew.py script running")
+			self.console.send("Spacebrew.py script running\n")
 			thread.start_new_thread(self.brew.run, ())
 
 		except:
