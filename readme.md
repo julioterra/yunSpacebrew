@@ -6,14 +6,13 @@ The Spacebrew Yun library features two main components - a set of python scripts
 
 
 ## Installing Linino Scripts:
-There are two python scripts that you need to copy into the python library folder on the arduino. These file are: `spacebrew.py` and `getProcPid.py`. Here is how you can do it:
+There are two python scripts that you need to copy into the python library folder on the arduino. These file are `spacebrew.py` and `getProcPid.py`, and they both reside in the spacebrew folder on the linino directory of this project. Here is how to copy them over: 
   
 1. Navigate to the `linino/spacebrew` folder in the yunSpacebrew directories  
 2. Run following commands:  
   
 ```
-scp ./spacebrew.py root@juliyun.local:/usr/lib/python2.7
-scp ./getProcPid.py root@juliyun.local:/usr/lib/python2.7
+scp -r ./spacebrew root@juliyun.local:/usr/lib/python2.7
 ```
   
 Important: replace `juliyun.local` with the name or IP of your yun  

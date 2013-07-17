@@ -1,1 +1,1 @@
-__all__ = ['spacebrew']
+__all__ = ['spacebrew', 'getProcPid']

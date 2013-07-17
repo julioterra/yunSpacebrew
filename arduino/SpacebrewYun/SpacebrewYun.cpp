@@ -109,7 +109,7 @@ void SpacebrewYun::connect(String _server, int _port) {
 	killPids();
 
 	brew.begin("python"); // Process should launch the "curl" command
-	brew.addParameter("/usr/lib/python2.7/spacebrew.py"); // Process should launch the "curl" command
+	brew.addParameter("/usr/lib/python2.7/spacebrew/spacebrew.py"); // Process should launch the "curl" command
 	brew.addParameter("--server");
 	brew.addParameter(server);
 	brew.addParameter("--port");
@@ -293,7 +293,7 @@ void SpacebrewYun::getPids() {
 
 	// request the pid of all python processes
 	pids.begin("python");
-	pids.addParameter("/usr/lib/python2.7/getProcPid.py"); // Process should launch the "curl" command
+	pids.addParameter("/usr/lib/python2.7/spacebrew/getProcPid.py"); // Process should launch the "curl" command
 	pids.run();
 
 	if (_verbose) {
