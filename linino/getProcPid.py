@@ -12,6 +12,7 @@ def command():
  	script = "spacebrew.py"
  	regex_str = " *(\d+) +root +\d+ [ \w]+" + process + " .*" + script 
  	# regex_str_osx = " *(\d+) +\w+ +\d+[ :\d\w.]+python.*spacebrew.py"
+
  	pid_regex = re.compile( regex_str )
  	pid_arr = pid_regex.findall( stdout_text )
  	pid_str = ''

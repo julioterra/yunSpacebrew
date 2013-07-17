@@ -12,17 +12,15 @@ import thread
 
 class SERIAL:
 
-	class PUB:
-		CONNECTED		= chr(28)
+	class MSG:
 		NAME 			= chr(29)
-		MSG				= chr(30)
+		DATA			= chr(30)
 		END 			= chr(31)
 
-	class ERROR:
-		CODE			= chr(30)
-		MSG				= chr(30)
-		END 			= chr(31)
-		PUBLISH_INVALID = (301, 'not able to publish message to spacebrew\n')
+	class CONNECTION:
+		START 			= chr(28)
+		END 			= chr(27)
+		ERROR 			= chr(26)
 
 class OPT:
 	SERVER 			= '--server'
@@ -201,21 +199,28 @@ class Spacebrew(object):
 
 	def on_open( self, ws ):
 		ws.send( json.write(self.makeConfig()) )
- 		self._console.log( SERIAL.PUB.CONNECTED )
  		self.connected = True
+ 		if self._console: 
+ 			self._console.log( SERIAL.CONNECTION.START )
 
 	def on_message( self, ws, message ):
 		full = json.read( message )
 		msg = full["message"]
 		if self.subscribers[msg['name']]:
-	 		# self._console.log("from " + str(msg['name']).encode('ascii', 'ignore') + " received " + (msg['value']).encode('ascii', 'ignore') + '\n')
 	 		if self._console: self._console.publish(str(msg['name']), str(msg['value']))
 
 	def on_error(self,ws,error):
  		if options.debug: print ( "[on_error] error encountered ", str( error ) )
+ 		if self._console: 
+ 			error_msg = SERIAL.CONNECTION.ERROR + str(error) + SERIAL.MSG.END
+	 		self._console.log( error_msg )
 
 	def on_close(self, ws):
-		self.connected = False
+		if self.connected:
+			self.connected = False
+	 		if self._console: 
+		 		self._console.log( SERIAL.CONNECTION.END )
+
 		while self.started and not self.connected:
 			time.sleep(5)
 			self.run()
@@ -300,7 +305,7 @@ class Console(object):
 	    # if new data was received then add it buffer and check if end message was provided
 		if new_data:
 			self.msg_buffer += new_data
-			index_end = self.msg_buffer.find(SERIAL.PUB.END)
+			index_end = self.msg_buffer.find(SERIAL.MSG.END)
 
 		if new_data == '':
 			console_running = False
@@ -309,8 +314,8 @@ class Console(object):
 
 		# if message end was found, then look for the start and div marker
 		if index_end > 0:
-			index_name = self.msg_buffer.find(SERIAL.PUB.NAME)
-			index_msg = self.msg_buffer.find(SERIAL.PUB.MSG)
+			index_name = self.msg_buffer.find(SERIAL.MSG.NAME)
+			index_msg = self.msg_buffer.find(SERIAL.MSG.DATA)
 
 			publish_route = "" 
 			msg = ""
@@ -340,7 +345,7 @@ class Console(object):
 
 	def publish(self, name, message):
 		try:
-			full_msg = SERIAL.PUB.NAME + name + SERIAL.PUB.MSG + message + SERIAL.PUB.END
+			full_msg = SERIAL.MSG.NAME + name + SERIAL.MSG.DATA + message + SERIAL.MSG.END
 			self.console.send(full_msg)
 		except:
 			pass

@@ -29,7 +29,7 @@ SpacebrewYun::SpacebrewYun(const String& _name, const String& _description) {
 
 }
 
-boolean SpacebrewYun::_connected = false;
+// boolean SpacebrewYun::_connected = false;
 SpacebrewYun::OnBooleanMessage SpacebrewYun::_onBooleanMessage = NULL;
 SpacebrewYun::OnRangeMessage SpacebrewYun::_onRangeMessage = NULL;
 SpacebrewYun::OnStringMessage SpacebrewYun::_onStringMessage = NULL;
@@ -146,40 +146,66 @@ void SpacebrewYun::connect(String _server, int _port) {
 		}
 	}
 
-	Serial.println("connect - starting console");
+	Serial.println("starting console");
 
 	Console.begin();
 	brew.runAsynchronously();
 	while (!Console) { ; }
 
-	Serial.println("connect - connected to spacebrew.py script");
+	Serial.println("connected to spacebrew.py");
 }
 
 void SpacebrewYun::monitor() {
 	while (Console.available() > 0) {
 	    char c = Console.read();
-	    if (c == char(MSG_START)) {
-	    	read_name = true;
-	    } else if (c == char(MSG_CONNECTED)) {
+
+		if (c == char(CONNECTION_START) && !_connected) {
 	    	_connected = true;
-	    	Serial.println("Connected to Spacebrew");
+	    	Serial.println(F("connected to Spacebrew"));
 			if (_onOpen != NULL){
 				_onOpen();
 			}
-	    } else if (c == char(MSG_DIV) || sub_name.length() > sub_name_max) {
-	    	read_name = false;
-	    	read_msg = true;
-	    } else if (c == char(MSG_END) || sub_msg.length() > sub_msg_max) {
-	    	read_msg = false;
-	    	onMessage();
-	    } else {
-			if (read_name == true) {
-				sub_name += c;
-			} else if (read_msg == true) {
-				sub_msg += c;
+	    } 	    
+	    else if (c == char(CONNECTION_END) && _connected) {
+	    	_connected = false;
+	    	Serial.println(F("disconnected from Spacebrew"));
+			if (_onClose != NULL){
+				_onClose();
+			}
+	    } 	 
+
+		if (c == char(CONNECTION_ERROR)) {
+			_error_msg = true;
+			Serial.println(F("ERROR :: with Spacebrew.py Connection ::"));
+		}
+		else if (_error_msg && c == char(MSG_END)) {
+			_error_msg = false;
+			Serial.println();
+		}
+		if (_error_msg) {
+		    Serial.print(c);			
+		}
+
+	    if (_connected) {
+			if (c == char(MSG_START)) {
+				read_name = true;
+			} else if (c == char(MSG_DIV) || sub_name.length() > sub_name_max) {
+				read_name = false;
+				read_msg = true;
+			} else if (c == char(MSG_END) || sub_msg.length() > sub_msg_max) {
+				read_msg = false;
+				onMessage();
 			} else {
-			    Serial.print(c);
-			}	    	
+				if (read_name == true) {
+					sub_name += c;
+				} else if (read_msg == true) {
+					sub_msg += c;
+				} 
+				// uncomment to print all unhandled messages
+				// else {
+				//     Serial.print(c);
+				// }	    	
+			}
 	    }
 	}	
 }
@@ -240,32 +266,8 @@ boolean SpacebrewYun::send(const String& name, const String& value){
 	Console.print(char(31));
 	Console.flush();
 
-
-	// Serial.print("SEND ");
-	// Serial.print(char(29));
-	// Serial.print(name);
-	// Serial.print(char(30));
-	// Serial.print(value);
-	// Serial.println(char(31));
-
 	return true;
 }
-
-//boolean SpacebrewYun::send(const String & name, boolean value){
-//	return send(name, (value ? "true" : "false"));
-//}
-//
-//boolean SpacebrewYun::send(const String & name, int value) {
-//	return send(name, String(value));
-//}
-//
-//boolean SpacebrewYun::send(const String & name, long value) {
-//	return send(name, String(value));
-//}
-//
-//boolean SpacebrewYun::send(const String & name, float value) {
-//	return send(name, String(value));
-//}
 
 
 /**
@@ -275,7 +277,7 @@ void SpacebrewYun::getPids() {
 
 	// request the pid of all python processes
 	pids.begin("python");
-	pids.addParameter("/usr/lib/python2.7/getSbPid.py"); // Process should launch the "curl" command
+	pids.addParameter("/usr/lib/python2.7/getProcPid.py"); // Process should launch the "curl" command
 	pids.run();
 
 	Serial.println("getPids - process running");

@@ -7,7 +7,14 @@
 #include <Console.h>
 #include <Process.h>
 
-enum SBmsg { MSG_CONNECTED = char(28), MSG_START = char(29), MSG_DIV = char(30), MSG_END = char(31) };
+enum SBmsg { 
+	CONNECTION_START = char(28), 
+	CONNECTION_END = char(27), 
+	CONNECTION_ERROR = char(26), 
+	MSG_START = char(29), 
+	MSG_DIV = char(30), 
+	MSG_END = char(31) 
+};
 
 struct Publisher {
 	char *name;
@@ -25,10 +32,10 @@ struct Subscriber{
 int const pidLength = 6;
 int const sbPidsLen = 4;
 
-
 class SpacebrewYun {
 
 	public:
+
 	    SpacebrewYun(const String&, const String&);
 	    void addPublish(const String&, const String&);
 	    void addSubscribe(const String&, const String&);
@@ -68,10 +75,10 @@ class SpacebrewYun {
 	    typedef void (*OnBooleanMessage)(String name, boolean value);
 	    typedef void (*OnRangeMessage)(String name, int value);
 	    typedef void (*OnStringMessage)(String name, String value);
-	    typedef void (*OnCustomMessage)(String name, String value, const String type);
+	    typedef void (*OnCustomMessage)(String name, String value, String type);
 	    typedef void (*OnSBOpen)();
-	    typedef void (*OnSBClose)(int code, const String message);
-	    typedef void (*OnSBError)(const String message);
+	    typedef void (*OnSBClose)();
+	    typedef void (*OnSBError)(int code, String message);
 
 	    void onOpen(OnSBOpen function);
 	    void onClose(OnSBClose function);
@@ -83,14 +90,14 @@ class SpacebrewYun {
 	    void killPids();
 	    void getPids();
 
-
 	private:
 
 		Process brew;
 		String name;
 		String server;
 		String description;
-		static boolean _connected;
+		boolean _connected;
+		boolean _error_msg;
 		int port;
 
 		/**Output should be at least 5 cells**/
@@ -118,10 +125,10 @@ class SpacebrewYun {
 		int sbPids [4];
 
 
-static char * createString(int len){
-	char * out = ( char * )malloc( len + 1 );
-	return out;
-}		
+		static char * createString(int len){
+			char * out = ( char * )malloc( len + 1 );
+			return out;
+		}		
 
 };
 
