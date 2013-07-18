@@ -22,16 +22,17 @@ To install the Arduino Library just copy the folder titled spacebrewYun into the
 
 ## Trying it Out with the Sample Sketch:
 Here is how you can test out the library with the sample sketch:  
-1. Upload the sample sketch to your Arduino Yun  
-2. Open the serial monitor and you'll see the status of the app  
-3. Navigate to the spacebrew admin website on your browser and confirm that an app called aYun has appeared on the list of live apps: http://spacebrew.github.io/spacebrew/admin/admin.html?server=sandbox.spacebrew.cc   
-4. Open the javascript examples to connect to your app:  
+* Upload the sample sketch to your internet connected Arduino Yun  
+* Open the serial monitor to see the status of the app (this is required) 
+* Navigate to the spacebrew admin website on your browser: http://spacebrew.github.io/spacebrew/admin  
+* Confirm that an app called `aYun` has appeared on the list of live apps   
+* Open the javascript examples to connect to your app:  
   * Range example: http://julioterra.github.io/spacebrew-slider-with-admin/index.html?name=yunRange  
   * Boolean example: http://julioterra.github.io/spacebrew-button-with-admin/index.html?name=yunButton  
   * String example: http://julioterra.github.io/spacebrew-string-send-with-admin/index.html?name=yunString  
-5. Connect the publishers from you aYun client to those of the javascript clients, and vice versa.   
-6. Check out that the data being sent to the yun is showing up on your serial monitor.   
-7. Confirm that the data being sent from the yun is impacting the javascript apps.  
+* Connect the publishers from `aYun` to the subscriber of the javascript clients, and vice versa.   
+* Interact with the javascript apps while checking the serial monitor to confirm that data is being received.   
+* Confirm that the data is being sent from the yun by looking at the javascript apps.  
   
 ## Understanding the Example Sketch:
 Here is how the example sketch works. At the top of the sketch we create an instance of the SpacebrewYun class using the constructor. The constructor accepts two values: a `name` and a `description`.  
