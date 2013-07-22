@@ -5,17 +5,40 @@ The Spacebrew Yun library features two main components - a set of python scripts
 @date:  July 16, 2013
 
 
-## Installing Linino Scripts:
-There are two python scripts that you need to copy into the python library folder on the arduino. These file are `spacebrew.py` and `getProcPid.py`, and they both reside in the spacebrew folder on the linino directory of this project. Here is how to copy them over: 
+## Installing Linino Python and Shell Scripts:
+There are two python scripts that you need to copy into the python library folder on the arduino. These file are `spacebrew.py` and `getprocpid.py`, and they both reside in the spacebrew folder on the linino directory of this project. Here is how to copy them over: 
   
-1. Navigate to the `linino/spacebrew` folder in the yunSpacebrew directories  
+1. Navigate to the `linino` folder in the yunSpacebrew directories  
 2. Run following commands:  
   
 ```
 scp -r ./spacebrew root@juliyun.local:/usr/lib/python2.7
 ```
+
+There are two shell scripts that you need to copy into the user bin folder on the arduino. These files are `run-spacebrew` and `run-getsbproc`. They both reside in the shell folder on the linino directory of this project. Here is how to copy them over and then configure them to be executable files:
+
+1. Navigate to the `linino/shell` folder in the yunSpacebrew directories  
+2. Copy files over to linino with `scp` commands:  
   
-Important: replace `juliyun.local` with the name or IP of your yun  
+```
+scp ./run-spacebrew root@juliyun.local:/usr/bin
+scp ./run-getsbproc root@juliyun.local:/usr/bin
+```
+
+3. SSH into the linino using the following command, input the password when prompted:
+
+```
+ssh root@juliyun.local
+```
+
+4. Make the files executable by running `chmod` commands:
+  
+```
+chmod 0755 /usr/bin/run-spacebrew
+chmod 0755 /usr/bin/run-getsbproc
+```
+  
+**Important**: replace `juliyun.local` with the name or IP of your yun  
 
 ## Installing Arduino Library:
 To install the Arduino Library just copy the folder titled spacebrewYun into the libraries folder in your Arduino sketch book. Then run the example sketch to try it out.
