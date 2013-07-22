@@ -16,6 +16,7 @@ class SERIAL:
 		NAME 			= chr(29)
 		DATA			= chr(30)
 		END 			= chr(31)
+		CONFIRM 		= chr(25)
 
 	class CONNECTION:
 		START 			= chr(28)
@@ -318,6 +319,7 @@ class Console(object):
 
 				try:
 					self.brew.publish(publish_route, msg)
+					self.console.send(SERIAL.MSG.CONFIRM)
 				except Exception:
 					error_msg = "issue sending message via spacebrew, route: " + publish_route + "\n"
 					self.log(error_msg)

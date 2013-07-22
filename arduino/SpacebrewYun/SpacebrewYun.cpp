@@ -154,7 +154,15 @@ void SpacebrewYun::connect(String _server, int _port) {
 	}
 
 	Console.begin();
+	if (_verbose) {
+		Serial.println(F("Console started "));
+	}
+
 	brew.runAsynchronously();
+
+	if (_verbose) {
+		Serial.println(F("Brew started "));
+	}
 	while (!Console) { ; }
 }
 
@@ -163,7 +171,6 @@ void SpacebrewYun::monitor() {
 		char c = Console.read();
 
 		if (c == char(CONNECTION_START) && !_connected) {
-			_connected = true;
 			if (_verbose) {
 				Serial.print(F("Connected to spacebrew server at: "));
 				Serial.println(server);
@@ -173,6 +180,7 @@ void SpacebrewYun::monitor() {
 			if (_onOpen != NULL){
 				_onOpen();
 			}
+			_connected = true;
 		} 	    
 		else if (c == char(CONNECTION_END) && _connected) {
 			_connected = false;
@@ -281,8 +289,6 @@ void SpacebrewYun::send(const String& name, const String& value){
 	Console.print(value);
 	Console.print(char(31));
 	Console.flush();
-
-	true;
 }
 
 
@@ -293,7 +299,7 @@ void SpacebrewYun::getPids() {
 
 	// request the pid of all python processes
 	pids.begin("python");
-	pids.addParameter("/usr/lib/python2.7/spacebrew/getProcPid.py"); // Process should launch the "curl" command
+	pids.addParameter("/usr/lib/python2.7/spacebrew/getprocpid.py"); // Process should launch the "curl" command
 	pids.run();
 
 	if (_verbose) {

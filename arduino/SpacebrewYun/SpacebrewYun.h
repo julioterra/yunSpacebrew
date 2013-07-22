@@ -11,6 +11,7 @@ enum SBmsg {
 	CONNECTION_START = char(28), 
 	CONNECTION_END = char(27), 
 	CONNECTION_ERROR = char(26), 
+	MSG_CONFIRM = char(25), 
 	MSG_START = char(29), 
 	MSG_DIV = char(30), 
 	MSG_END = char(31) 
@@ -19,7 +20,7 @@ enum SBmsg {
 struct Publisher {
 	char *name;
 	char *type;
-	char *defaultValue;
+	char *lastMsg;
 	Publisher * next;
 };
 
@@ -113,7 +114,7 @@ class SpacebrewYun {
 		void getPids();
 
 		static char * createString(int len){
-			char * out = ( char * )malloc( len + 1 );
+			char * out = ( char * ) malloc ( len + 1 );
 			return out;
 		}		
 
