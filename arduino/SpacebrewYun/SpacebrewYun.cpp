@@ -4,6 +4,8 @@
 SpacebrewYun::SpacebrewYun(const String& _name, const String& _description) {
 	name = _name;
 	description = _description;
+	subscribers = NULL;
+	publishers = NULL;
 
 	server = "sandbox.spacebrew.cc";
 	port = 9000;
@@ -18,8 +20,6 @@ SpacebrewYun::SpacebrewYun(const String& _name, const String& _description) {
 
 	read_name = false;
 	read_msg = false;
-	sub_name_max = 25;
-	sub_msg_max = 50;
 
 	for ( int i = 0; i < pidLength; i++ ) {
 		pid [i] = '\0';
@@ -33,7 +33,10 @@ SpacebrewYun::SpacebrewYun(const String& _name, const String& _description) {
 
 }
 
-// boolean SpacebrewYun::_connected = false;
+int SpacebrewYun::sub_msg_int_max = 6;
+int SpacebrewYun::sub_msg_bool_max = 5;
+int SpacebrewYun::sub_msg_str_max = 50;
+int SpacebrewYun::sub_name_max = 20;
 SpacebrewYun::OnBooleanMessage SpacebrewYun::_onBooleanMessage = NULL;
 SpacebrewYun::OnRangeMessage SpacebrewYun::_onRangeMessage = NULL;
 SpacebrewYun::OnStringMessage SpacebrewYun::_onStringMessage = NULL;
@@ -65,40 +68,57 @@ void SpacebrewYun::onError(OnSBError function){
 }
 
 void SpacebrewYun::addPublish(const String& name, const String& type) {
-	Publisher *p = new Publisher();
+	struct Publisher *p = new Publisher();
 	p->name = createString(name.length() + 1);
 	p->type = createString(type.length() + 1);
+	p->confirmed = false;
+	p->time = 0;
+	if (type == "range") {
+		p->lastMsg = createString(sub_msg_int_max);	
+		emptyString(p->lastMsg, sub_msg_int_max);	
+	}
+	else if (type == "boolean") {
+		p->lastMsg = createString(sub_msg_bool_max);		
+		emptyString(p->lastMsg, sub_msg_bool_max);	
+	}
+	else {
+		p->lastMsg = createString(sub_msg_str_max);		
+		emptyString(p->lastMsg, sub_msg_str_max);	
+	}
 	name.toCharArray(p->name, name.length() + 1);
 	type.toCharArray(p->type, type.length() + 1);
 
 	if (publishers == NULL){
 		publishers = p;
-	} else {
-		Publisher *curr = publishers;
+	} 
+	else {
+		struct Publisher *curr = publishers;
+		int counter = 1;
 		while(curr->next != NULL){
 			curr = curr->next;
+			counter++;
 		}
 		curr->next = p;
 	}
+	p->next = NULL;
 }
 
 void SpacebrewYun::addSubscribe(const String& name, const String& type) {
-	Subscriber *p = new Subscriber();
-	p->name = createString(name.length() + 1);
-	p->type = createString(type.length() + 1);
-	name.toCharArray(p->name, name.length() + 1);
-	type.toCharArray(p->type, type.length() + 1);
+	Subscriber *s = new Subscriber();
+	s->name = createString(name.length() + 1);
+	s->type = createString(type.length() + 1);
+	name.toCharArray(s->name, name.length() + 1);
+	type.toCharArray(s->type, type.length() + 1);
 
 	if (subscribers == NULL){
-		subscribers = p;
+		subscribers = s;
 	} 
-
 	else {
-		Subscriber *curr = subscribers;
+		struct Subscriber *curr = subscribers;
 		while(curr->next != NULL){
 			curr = curr->next;
 		}
-		curr->next = p;
+		curr->next = s;
 	}
 }
 
@@ -108,8 +128,9 @@ void SpacebrewYun::connect(String _server, int _port) {
 	
 	killPids();
 
-	brew.begin("python"); // Process should launch the "curl" command
-	brew.addParameter("/usr/lib/python2.7/spacebrew/spacebrew.py"); // Process should launch the "curl" command
+	brew.begin("run-spacebrew"); // Process should launch the "curl" command
+	// brew.begin("python"); // Process should launch the "curl" command
+	// brew.addParameter("/usr/lib/python2.7/spacebrew/spacebrew.py"); // Process should launch the "curl" command
 	brew.addParameter("--server");
 	brew.addParameter(server);
 	brew.addParameter("--port");
@@ -120,11 +141,13 @@ void SpacebrewYun::connect(String _server, int _port) {
 	brew.addParameter(description);
 
 	if (subscribers != NULL) {
-		Subscriber *curr = subscribers;
+		struct Subscriber *curr = subscribers;
 		while(curr != NULL){
 			if (_verbose) {
-				Serial.print(F("Creating subcribers: "));
-				Serial.println(curr->name);
+				Serial.print(F("Creating subscribers: "));
+				Serial.print(curr->name);
+				Serial.print(F(" of type: "));
+				Serial.println(curr->type);
 			}
 
 			brew.addParameter("-s"); // Add the URL parameter to "curl"
@@ -132,24 +155,27 @@ void SpacebrewYun::connect(String _server, int _port) {
 			brew.addParameter(","); // Add the URL parameter to "curl"
 			brew.addParameter(curr->type); // Add the URL parameter to "curl"
 
-			if (curr->next == NULL) curr = NULL;
-			else curr = curr->next;
+			// if (curr->next == NULL) curr = NULL;
+			// else curr = curr->next;
+
+			curr = curr->next;
 		}
 	}
 	if (publishers != NULL) {
-		Publisher *curr = publishers;
+		struct Publisher *curr = publishers;
 		while(curr != NULL){
 			if (_verbose) {
 				Serial.print(F("Creating publishers: "));
-				Serial.println(curr->name);
+				Serial.print(curr->name);
+				Serial.print(F(" of type: "));
+				Serial.println(curr->type);
 			}
 			brew.addParameter("-p"); // Add the URL parameter to "curl"
 			brew.addParameter(curr->name); // Add the URL parameter to "curl"
 			brew.addParameter(","); // Add the URL parameter to "curl"
 			brew.addParameter(curr->type); // Add the URL parameter to "curl"
 
-			if (curr->next == NULL) curr = NULL;
-			else curr = curr->next;
+			curr = curr->next;
 		}
 	}
 
@@ -213,11 +239,23 @@ void SpacebrewYun::monitor() {
 			} else if (c == char(MSG_DIV) || sub_name.length() > sub_name_max) {
 				read_name = false;
 				read_msg = true;
-			} else if (c == char(MSG_END) || sub_msg.length() > sub_msg_max) {
-				read_msg = false;
-				onMessage();
+			} else if (c == char(MSG_END) || sub_msg.length() > sub_msg_str_max) {
+				if (read_msg == true) {
+					read_msg = false;
+					onMessage();
+					delay(10);
+				}
+				if (read_confirm == true) {
+					read_confirm = false;
+					onConfirm();
+					delay(10);
+				}
+			} else if (c == char(MSG_CONFIRM)) {
+				read_confirm = true;
 			} else {
 				if (read_name == true) {
+					sub_name += c;
+				} else if (read_confirm == true) {
 					sub_name += c;
 				} else if (read_msg == true) {
 					sub_msg += c;
@@ -228,6 +266,39 @@ void SpacebrewYun::monitor() {
 			}
 		}
 	}	
+
+	if (publishers != NULL) {
+		struct Publisher *curr = publishers;
+		while((curr != NULL)){
+
+			if ( (curr->confirmed == 0) && ((millis() - curr->time) > 20) ) {
+				if (_verbose) {
+					Serial.print(F("resending  ")); 
+					Serial.println(curr->name);
+				} 
+				send(curr->name, curr->lastMsg);
+			}
+			curr = curr->next;
+		}
+	}
+
+}
+
+void SpacebrewYun::onConfirm() {
+	if (publishers != NULL) {
+		struct Publisher *curr = publishers;
+		while((curr != NULL)){
+			if (sub_name.equals(curr->name) == true) {
+				curr->confirmed = true;
+				break;
+			}
+			curr = curr->next;
+		}
+	}
+
+	sub_name = "";
+	sub_msg = "";
+	sub_type = "";
 }
 
 boolean SpacebrewYun::connected() {
@@ -240,13 +311,12 @@ void SpacebrewYun::verbose(boolean verbose = true) {
 
 void SpacebrewYun::onMessage() {
 	if (subscribers != NULL) {
-		Subscriber *curr = subscribers;
+		struct Subscriber *curr = subscribers;
 		while((curr != NULL) && (sub_type == "")){
 			if (sub_name.equals(curr->name) == true) {
 				sub_type = curr->type;
 			}
-			if (curr->next == NULL) curr = NULL;
-			else curr = curr->next;
+			curr = curr->next;
 		}
 	}
 
@@ -283,12 +353,42 @@ void SpacebrewYun::onMessage() {
 
 
 void SpacebrewYun::send(const String& name, const String& value){
-	Console.print(char(29));
-	Console.print(name);
-	Console.print(char(30));
-	Console.print(value);
-	Console.print(char(31));
-	Console.flush();
+	if (publishers != NULL) {
+		boolean pub_found = false;
+		struct Publisher *curr = publishers;
+		while((curr != NULL) && (pub_found == false)){
+			if (name.equals(curr->name) == true) {
+				int msg_len = 0;
+
+				if (curr->type == "range") msg_len = sub_msg_int_max;	
+				else if (curr->type == "boolean") msg_len = sub_msg_bool_max;		
+				else msg_len = sub_msg_str_max;		
+
+				if (value.length() < msg_len) msg_len = value.length() + 1;
+				value.toCharArray(curr->lastMsg, msg_len);
+
+				curr->confirmed = false;
+				curr->time = millis();
+
+				pub_found = true;
+
+				// Serial.print(F("last msg on route '"));
+				// Serial.print(curr->name);
+				// Serial.print(F("' was "));
+				// Serial.print(curr->lastMsg);
+			}
+			curr = curr->next;
+		}
+
+		if (pub_found == true) {
+			Console.print(char(29));
+			Console.print(name);
+			Console.print(char(30));
+			Console.print(value);
+			Console.print(char(31));
+			Console.flush();			
+		}
+	}	
 }
 
 
@@ -298,6 +398,7 @@ void SpacebrewYun::send(const String& name, const String& value){
 void SpacebrewYun::getPids() {
 
 	// request the pid of all python processes
+	// brew.begin("run-getsbpids"); // Process should launch the "curl" command
 	pids.begin("python");
 	pids.addParameter("/usr/lib/python2.7/spacebrew/getprocpid.py"); // Process should launch the "curl" command
 	pids.run();

@@ -2,4 +2,4 @@
 
 cd /usr/lib/python2.7/spacebrew
 
-exec nice -n 10 python spacebrew.py $@
+exec python spacebrew.py $@

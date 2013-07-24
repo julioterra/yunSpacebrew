@@ -2,6 +2,6 @@
 
 cd /usr/lib/python2.7/spacebrew
 
-exec nice -n 10 python -B getprocpid.pyc
+exec python getprocpid.py
 
 echo $?

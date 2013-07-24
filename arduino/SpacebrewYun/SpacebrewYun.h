@@ -11,7 +11,7 @@ enum SBmsg {
 	CONNECTION_START = char(28), 
 	CONNECTION_END = char(27), 
 	CONNECTION_ERROR = char(26), 
-	MSG_CONFIRM = char(25), 
+	MSG_CONFIRM = char(7), 
 	MSG_START = char(29), 
 	MSG_DIV = char(30), 
 	MSG_END = char(31) 
@@ -21,13 +21,15 @@ struct Publisher {
 	char *name;
 	char *type;
 	char *lastMsg;
-	Publisher * next;
+	Publisher *next;
+	int confirmed;
+	long time;
 };
 
 struct Subscriber{
 	char *name;
 	char *type;
-	Subscriber * next;
+	Subscriber *next;
 };
 
 int const pidLength = 6;
@@ -47,12 +49,13 @@ class SpacebrewYun {
 
 		void monitor();
 		void onMessage();
+		void onConfirm();
 
 		boolean connected();
 
 		void send(const String&, const String&);
 		void send(const String& name, char * value) { send(name, String(value)); }
-		void send(const String& name, bool value){ send(name, (value ? "true" : "false")); };
+		void send(const String& name, bool value){ send(name, (value ? String("true") : String("false"))); };
 		void send(const String& name, int value) { send(name, String(value)); };
 		void send(const String& name, long value) { send(name, String(value)); };
 		void send(const String& name, float value) { send(name, String(value)); };
@@ -103,8 +106,13 @@ class SpacebrewYun {
 
 		boolean read_name;
 		boolean read_msg;
-		int sub_name_max;
-		int sub_msg_max;
+		boolean read_confirm;
+		static int sub_name_max;
+		static int sub_msg_str_max;
+		static int sub_msg_int_max;
+		static int sub_msg_bool_max;
+		// int sub_name_max;
+		// int sub_msg_str_max;
 
 		Process pids;
 		char pid [6];
@@ -117,6 +125,12 @@ class SpacebrewYun {
 			char * out = ( char * ) malloc ( len + 1 );
 			return out;
 		}		
+
+		static void emptyString(char * str, int len){
+			for (int i = 0; i < len; i++) {
+				str[i] = '\0';
+			}
+		}
 
 };
 

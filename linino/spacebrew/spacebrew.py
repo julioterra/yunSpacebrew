@@ -16,7 +16,7 @@ class SERIAL:
 		NAME 			= chr(29)
 		DATA			= chr(30)
 		END 			= chr(31)
-		CONFIRM 		= chr(25)
+		CONFIRM 		= chr(7)
 
 	class CONNECTION:
 		START 			= chr(28)
@@ -276,6 +276,9 @@ class Console(object):
 		self.connected = False
 		self.msg_buffer = ""
 		self.brew = brew
+		# self.msg_started = False
+		# self.msg_completed = False
+		# self.msg_timeout = 20
 
 	def start(self):
 		try:
@@ -314,14 +317,22 @@ class Console(object):
 
 			if index_name >= 0 and index_msg > index_name:
 
-				publish_route = self.msg_buffer[(index_name + 1):index_msg]
-				msg = self.msg_buffer[(index_msg + 1):index_end]
-
 				try:
+					publish_route = self.msg_buffer[(index_name + 1):index_msg]
+					msg = self.msg_buffer[(index_msg + 1):index_end]
 					self.brew.publish(publish_route, msg)
-					self.console.send(SERIAL.MSG.CONFIRM)
+
 				except Exception:
 					error_msg = "issue sending message via spacebrew, route: " + publish_route + "\n"
+					self.log(error_msg)
+
+
+				try:
+					confirm_pub = SERIAL.MSG.CONFIRM + publish_route + SERIAL.MSG.END
+					self.log(confirm_pub)
+
+				except Exception:
+					error_msg = "issue sending confirmation about: " + publish_route + "\n"
 					self.log(error_msg)
 
 			self.msg_buffer = ""
