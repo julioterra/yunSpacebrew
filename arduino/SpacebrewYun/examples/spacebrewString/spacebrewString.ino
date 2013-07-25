@@ -3,7 +3,7 @@
  
  Demonstrates how to create a sketch that sends and receives strings
  to and from Spacebrew. Every time string data is received it 
- is output to the Serial monitor, and LED 13 blinks for 1 second.
+ is output to the Serial monitor.
 
  Make sure that your Yun is connected to the internet for this example 
  to function properly.
@@ -64,6 +64,8 @@ void loop() {
 
 	// connected to spacebrew then send a string every 2 seconds
 	if ( sb.connected() ) {
+
+		// check if it is time to send a new message
 		if ( (millis() - last_time) > interval ) {
 			sb.send("speak", "is anybody out there?");
 			last_time = millis();
