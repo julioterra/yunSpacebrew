@@ -243,12 +243,12 @@ void SpacebrewYun::monitor() {
 				if (read_msg == true) {
 					read_msg = false;
 					onMessage();
-					delay(10);
+					// delay(2);
 				}
 				if (read_confirm == true) {
 					read_confirm = false;
 					onConfirm();
-					delay(10);
+					delay(2);
 				}
 			} else if (c == char(MSG_CONFIRM)) {
 				read_confirm = true;
@@ -271,9 +271,9 @@ void SpacebrewYun::monitor() {
 		struct Publisher *curr = publishers;
 		while((curr != NULL)){
 
-			if ( (curr->confirmed == 0) && ((millis() - curr->time) > 20) ) {
+			if ( (curr->confirmed == 0) && ((millis() - curr->time) > 50) ) {
 				if (_verbose) {
-					Serial.print(F("resending  ")); 
+					Serial.print(F("resending msg: ")); 
 					Serial.println(curr->name);
 				} 
 				send(curr->name, curr->lastMsg);
@@ -290,6 +290,10 @@ void SpacebrewYun::onConfirm() {
 		while((curr != NULL)){
 			if (sub_name.equals(curr->name) == true) {
 				curr->confirmed = true;
+				// if (_verbose) {
+				// 	Serial.print(F("confirmed  ")); 
+				// 	Serial.println(curr->name);
+				// }
 				break;
 			}
 			curr = curr->next;
@@ -354,9 +358,16 @@ void SpacebrewYun::onMessage() {
 
 void SpacebrewYun::send(const String& name, const String& value){
 	if (publishers != NULL) {
-		boolean pub_found = false;
+
+		Console.print(char(29));
+		Console.print(name);
+		Console.print(char(30));
+		Console.print(value);
+		Console.print(char(31));
+		Console.flush();			
+
 		struct Publisher *curr = publishers;
-		while((curr != NULL) && (pub_found == false)){
+		while(curr != NULL){
 			if (name.equals(curr->name) == true) {
 				int msg_len = 0;
 
@@ -370,24 +381,9 @@ void SpacebrewYun::send(const String& name, const String& value){
 				curr->confirmed = false;
 				curr->time = millis();
 
-				pub_found = true;
-
-				// Serial.print(F("last msg on route '"));
-				// Serial.print(curr->name);
-				// Serial.print(F("' was "));
-				// Serial.print(curr->lastMsg);
 			}
 			curr = curr->next;
-		}
-
-		if (pub_found == true) {
-			Console.print(char(29));
-			Console.print(name);
-			Console.print(char(30));
-			Console.print(value);
-			Console.print(char(31));
-			Console.flush();			
-		}
+		}	
 	}	
 }
 
