@@ -1,18 +1,17 @@
 /*
-  Spacebrew Range
+  Spacebrew Boolean
  
- Demonstrates how to create a sketch that sends and receives analog
- range value to and from Spacebrew. Every time the state of the 
- potentiometer (or other analog input component) change a spacebrew
- message is sent. The sketch also accepts analog range messages from 
+ Demonstrates how to create a sketch that sends and receives a
+ boolean value to and from Spacebrew. Every time the buttton is 
+ pressed (or other digital input component) a spacebrew message 
+ is sent. The sketch also accepts analog range messages from 
  other Spacebrew apps.
 
  Make sure that your Yun is connected to the internet for this example 
  to function properly.
  
  The circuit:
- - Potentiometer connected to Yun. Middle pin connected to analog pin A0, 
-   other pins connected to 5v and GND pins.
+ - Button connected to Yun, using the Arduino's internal pullup resistor.
  
  created 2013
  by Julio Terra
@@ -28,7 +27,7 @@
 #include <SpacebrewYun.h>
 
 // create a variable of type SpacebrewYun and initialize it with the constructor
-SpacebrewYun sb = SpacebrewYun("spacebrewYun Range", "Range sender and receiver");
+SpacebrewYun sb = SpacebrewYun("spacebrewYun Boolean", "Boolean sender and receiver");
 
 // variable that holds the last potentiometer value
 int last_value = 0;
@@ -50,14 +49,17 @@ void setup() {
 	sb.verbose(true);
 
 	// configure the spacebrew publisher and subscriber
-	sb.addPublish("physical pot", "range");
-	sb.addSubscribe("virtual pot", "range");
+	sb.addPublish("physical button", "boolean");
+	sb.addSubscribe("virtual button", "boolean");
 
 	// register the string message handler method 
-	sb.onRangeMessage(handleRange);
+	sb.onBooleanMessage(handleBoolean);
 
 	// connect to cloud spacebrew server at "sandbox.spacebrew.cc"
 	sb.connect("sandbox.spacebrew.cc"); 
+
+	pinMode(3, INPUT);
+	digitalWrite(3, HIGH);
 } 
 
 
@@ -67,20 +69,21 @@ void loop() {
 
 	// connected to spacebrew then send a new value whenever the pot value changes
 	if ( sb.connected() ) {
-		int cur_value = analogRead(A0);
+		int cur_value = digitalRead(3);
 		if ( last_value != cur_value ) {
-			sb.send("physical pot", cur_value);
+			if (cur_value == HIGH) sb.send("physical button", false);
+			else sb.send("physical button", true);
 			last_value = cur_value;
 		}
 	}
 } 
 
 // handler method that is called whenever a new string message is received 
-void handleRange (String route, int value) {
+void handleBoolean (String route, boolean value) {
 	// print the message that was received
 	Serial.print("From ");
 	Serial.print(route);
 	Serial.print(", received msg: ");
-	Serial.println(value);
+	Serial.println(value ? "true" : "false");
 }
 
