@@ -15,14 +15,13 @@ There are two python scripts that you need to copy into the python library folde
 scp -r ./spacebrew root@juliyun.local:/usr/lib/python2.7
 ```
 
-There are two shell scripts that you need to copy into the user bin folder on the arduino. These files are `run-spacebrew` and `run-getsbproc`. They both reside in the shell folder on the linino directory of this project. Here is how to copy them over and then configure them to be executable files:
+There is one shell script that you need to copy into the user bin folder on the arduino. This files is called `run-spacebrew`. It resides in the shell folder on the linino directory of this project. Here is how to copy them over and then configure them to be executable files:
 
 1. Navigate to the `linino/shell` folder in the yunSpacebrew directories  
 2. Copy files over to linino with `scp` commands:  
   
 ```
 scp ./run-spacebrew root@juliyun.local:/usr/bin
-scp ./run-getsbproc root@juliyun.local:/usr/bin
 ```
 
 3. SSH into the linino using the following command, input the password when prompted:
@@ -35,7 +34,6 @@ ssh root@juliyun.local
   
 ```
 chmod 0755 /usr/bin/run-spacebrew
-chmod 0755 /usr/bin/run-getsbproc
 ```
   
 **Important**: replace `juliyun.local` with the name or IP of your yun  
