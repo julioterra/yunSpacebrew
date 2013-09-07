@@ -66,7 +66,8 @@ void setup() {
 
 	// connect to cloud spacebrew server at "sandbox.spacebrew.cc"
 	sb.connect("sandbox.spacebrew.cc"); 
-
+	// we give some time to arduino to connect to sandbox, otherwise the first sb.monitor(); call will give an error
+	delay(1000);
 } 
 
 
@@ -92,6 +93,7 @@ void loop() {
 
 		}
 	}
+	delay(1000);
 } 
 
 // define handler methods, all standard data type handlers take two appropriate arguments

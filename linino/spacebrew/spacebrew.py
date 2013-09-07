@@ -199,13 +199,13 @@ class Spacebrew(object):
 		return config
 
 	def on_open( self, ws ):
-		ws.send( json.write(self.makeConfig()) )
+		ws.send( json.dumps(self.makeConfig()) )
  		self.connected = True
  		if self._console: 
  			self._console.log( SERIAL.CONNECTION.START )
 
 	def on_message( self, ws, message ):
-		full = json.read( message )
+		full = json.loads( message )
 		msg = full["message"]
 		if self.subscribers[msg['name']]:
 	 		if self._console: self._console.publish(str(msg['name']), str(msg['value']))
@@ -242,7 +242,7 @@ class Spacebrew(object):
 
 		if options.debug: self._console.log("on: '" + name + "' published msg: " + str(message) + "\n")
 
-		self.ws.send(json.write(message))
+		self.ws.send(json.dumps(message))
 
 	def start(self):
 		pass
