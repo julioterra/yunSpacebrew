@@ -43,7 +43,8 @@ To install the Arduino Library just copy the folder titled spacebrewYun into the
 
 ## Trying it Out with the Sample Sketch:
 Here is how you can test out the library with the sample sketch:  
-* Upload the sample sketch to your internet connected Arduino Yun  
+* Upload the sample sketch to your internet connected Arduino Yun
+  * Make sure to upload the sketch using USB (and not WIFI)  
 * Open the serial monitor to see the status of the app (this is required) 
 * Navigate to the spacebrew admin website on your browser: http://spacebrew.github.io/spacebrew/admin  
 * Confirm that an app called `aYun` has appeared on the list of live apps   
