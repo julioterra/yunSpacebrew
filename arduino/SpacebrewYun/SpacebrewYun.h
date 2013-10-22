@@ -84,6 +84,7 @@ class SpacebrewYun {
 		String name;
 		String server;
 		String description;
+		boolean _started;
 		boolean _connected;
 		boolean _error_msg;
 		boolean _verbose;
@@ -111,8 +112,9 @@ class SpacebrewYun {
 		static int sub_msg_str_max;
 		static int sub_msg_int_max;
 		static int sub_msg_bool_max;
-		// int sub_name_max;
-		// int sub_msg_str_max;
+
+		long connect_attempt;
+		int connect_attempt_inter;
 
 		Process pids;
 		char pid [6];

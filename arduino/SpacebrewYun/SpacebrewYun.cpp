@@ -10,6 +10,7 @@ SpacebrewYun::SpacebrewYun(const String& _name, const String& _description) {
 	server = "sandbox.spacebrew.cc";
 	port = 9000;
 
+	_started = false;
 	_connected = false;
 	_verbose = false;
 	_error_msg = false;
@@ -20,6 +21,9 @@ SpacebrewYun::SpacebrewYun(const String& _name, const String& _description) {
 
 	read_name = false;
 	read_msg = false;
+
+	connect_attempt = 0;
+	connect_attempt_inter = 10000;
 
 	for ( int i = 0; i < pidLength; i++ ) {
 		pid [i] = '\0';
@@ -123,9 +127,12 @@ void SpacebrewYun::addSubscribe(const String& name, const String& type) {
 }
 
 void SpacebrewYun::connect(String _server, int _port) {
+	Serial.print(F("NEW LIB"));
+	_started = true;
 	server = _server;
 	port = _port; 
-	
+	connect_attempt = millis();
+
 	killPids();
 
 	brew.begin("run-spacebrew"); // Process should launch the "curl" command
@@ -193,10 +200,19 @@ void SpacebrewYun::connect(String _server, int _port) {
 }
 
 void SpacebrewYun::monitor() {
+
+	// if not connected try to reconnect after appropriate interval
+	if (_started && !_connected) {
+		if ((millis() - connect_attempt) > connect_attempt_inter) {
+			connect(server, port);
+		}
+	}
+
+	// if message received from console, then process it
 	while (Console.available() > 0) {
 		char c = Console.read();
 
-		if (c == char(CONNECTION_START) && !_connected) {
+		if (c == char(CONNECTION_START) && _started && !_connected) {
 			if (_verbose) {
 				Serial.print(F("Connected to spacebrew server at: "));
 				Serial.println(server);
@@ -208,6 +224,7 @@ void SpacebrewYun::monitor() {
 			}
 			_connected = true;
 		} 	    
+
 		else if (c == char(CONNECTION_END) && _connected) {
 			_connected = false;
 			if (_verbose) {
@@ -267,7 +284,8 @@ void SpacebrewYun::monitor() {
 		}
 	}	
 
-	if (publishers != NULL) {
+	// check if received confirmation that linino received messages 
+	if (publishers != NULL && _connected) {
 		struct Publisher *curr = publishers;
 		while((curr != NULL)){
 
@@ -290,10 +308,6 @@ void SpacebrewYun::onConfirm() {
 		while((curr != NULL)){
 			if (sub_name.equals(curr->name) == true) {
 				curr->confirmed = true;
-				// if (_verbose) {
-				// 	Serial.print(F("confirmed  ")); 
-				// 	Serial.println(curr->name);
-				// }
 				break;
 			}
 			curr = curr->next;
