@@ -2,7 +2,7 @@
 
 from socket import socket, AF_INET, SOCK_STREAM, SOL_SOCKET, SO_REUSEADDR, gethostname
 from select import select
-from websocket import websocket #, ABNF
+from websocket import websocket 
 import json
 import time
 import optparse
@@ -31,7 +31,7 @@ class OPT:
 	SUBSCRIBER   	= '-s'
 	PUBLISHER 		= '-p'
 
-class ERROR:
+class ERROR_OPT:
     OK                  = (0,   '')
     SERVER_MISSING     	= (201, '(' + OPT.SERVER + ') server host not specified')
     SERVER_INVALID     	= (202, '(' + OPT.SERVER + ') "%s" is not a valid host name')
@@ -44,13 +44,14 @@ class ERROR:
 
 
 class SpacebrewOptParser(optparse.OptionParser):
+
     ERRORS = {
-        OPT.SERVER     		:ERROR.SERVER_MISSING,
-        OPT.PORT      		:ERROR.PORT_MISSING,
-        OPT.NAME  			:ERROR.NAME_MISSING,
-        OPT.DESCRIPTION     :ERROR.DESCRIPTION_MISSING,
-        OPT.SUBSCRIBER      :ERROR.SUBSCRIBER_MISSING,
-        OPT.PUBLISHER 		:ERROR.PUBLISHER_MISING,
+        OPT.SERVER     		:ERROR_OPT.SERVER_MISSING,
+        OPT.PORT      		:ERROR_OPT.PORT_MISSING,
+        OPT.NAME  			:ERROR_OPT.NAME_MISSING,
+        OPT.DESCRIPTION     :ERROR_OPT.DESCRIPTION_MISSING,
+        OPT.SUBSCRIBER      :ERROR_OPT.SUBSCRIBER_MISSING,
+        OPT.PUBLISHER 		:ERROR_OPT.PUBLISHER_MISING,
     }
 
     def error(self, msg):
@@ -88,8 +89,8 @@ class sbOptions(Option):
 			if len(subpubArray) == 2:
 				values.ensure_value(dest, []).append({"name": subpubArray[0], "type": subpubArray[1]})
 			else:
-				if opt == '-s': exitWithError(ERROR.SUBSCRIBER_MISSING, len(subpubArray))
-				if opt == '-p': exitWithError(ERROR.PUBLISHER_MISING, len(subpubArray))
+				if opt == '-s': exitWithError(ERROR_OPT.SUBSCRIBER_MISSING, len(subpubArray))
+				if opt == '-p': exitWithError(ERROR_OPT.PUBLISHER_MISING, len(subpubArray))
 
 		elif action == "strspaces":
 
@@ -208,7 +209,7 @@ class Spacebrew(object):
 		full = json.loads( message )
 		msg = full["message"]
 		if self.subscribers[msg['name']]:
-	 		if self._console: self._console.publish(str(msg['name']), str(msg['value']))
+	 		if self._console: self._console.forward(str(msg['name']), str(msg['value']))
 
 	def on_error(self,ws,error):
  		if self._console: 
@@ -269,13 +270,14 @@ class Spacebrew(object):
 			self.ws.close()
 
 class Console(object):
-	pass
 
 	def __init__(self, brew):
 		self.console = socket(AF_INET, SOCK_STREAM)
 		self.connected = False
-		self.msg_buffer = ""
 		self.brew = brew
+		self.msg_buffer = ""
+		self.msg_queue = []
+		self.msg_ready = True
 		# self.msg_started = False
 		# self.msg_completed = False
 		# self.msg_timeout = 20
@@ -299,6 +301,10 @@ class Console(object):
 
 	    # if new data was received then add it buffer and check if end message was provided
 		if new_data:
+
+			if new_data == MSG.CONFIRM:
+				self.msg_ready = True
+
 			self.msg_buffer += new_data
 			index_end = self.msg_buffer.find(SERIAL.MSG.END)
 
@@ -317,25 +323,68 @@ class Console(object):
 
 			if index_name >= 0 and index_msg > index_name:
 
+				# publish data to spacebrew object
 				try:
 					publish_route = self.msg_buffer[(index_name + 1):index_msg]
 					msg = self.msg_buffer[(index_msg + 1):index_end]
 					self.brew.publish(publish_route, msg)
 
 				except Exception:
-					error_msg = "issue sending message via spacebrew, route: " + publish_route + "\n"
+					error_msg = ERROR + "issue sending message via spacebrew, route: " + publish_route + "\n" + SERIAL.MSG.END
 					self.log(error_msg)
 
 
+				# send confirmation back to arduino
 				try:
 					confirm_pub = SERIAL.MSG.CONFIRM + publish_route + SERIAL.MSG.END
-					self.log(confirm_pub)
+					self.console.send(confirm_pub)
 
 				except Exception:
-					error_msg = "issue sending confirmation about: " + publish_route + "\n"
+					error_msg = ERROR + "issue sending confirmation about: " + publish_route + "\n" + SERIAL.MSG.END
 					self.log(error_msg)
 
 			self.msg_buffer = ""
+
+	# Adds messages to queue for Arduino
+	def forward(self, name, data):
+
+		# remove existing publisher item from array
+		for index, item in self.msg_queue:
+			if self.msg_queue[index].name == name:
+				self.msg_queue.pop(index)
+
+		# add new publisher item to array
+		self.msg_queue.append({
+				name: 		name,
+				data: 		data,
+				message: 	SERIAL.MSG.NAME + name + SERIAL.MSG.DATA + data + SERIAL.MSG.END
+			})
+
+		# self.send()
+
+	# Send messages from queue to Arduino
+	def send(self):
+
+		if self.msg_ready and len(self.msg_queue) > 0:
+
+			try:
+				self.console.send(self.msg_queue[0].message)
+				self.msg_queue.pop(0)
+				self.msg_ready = False
+
+			except:
+				error_msg = ERROR + "issue sending data to arduino - name: " + name + " - message: " + message + "\n" + SERIAL.MSG.END
+				self.log(error_msg)
+				# pass
+
+		# try:
+		# 	full_msg = SERIAL.MSG.NAME + name + SERIAL.MSG.DATA + message + SERIAL.MSG.END
+		# 	self.console.send(full_msg)
+
+		# except:
+		# 	error_msg = ERROR + "issue sending data to arduino - name: " + name + " - message: " + message + "\n" + SERIAL.MSG.END
+		# 	self.log(error_msg)
+		# 	# pass
 
 	def run(self):
 		self.start()
@@ -343,15 +392,9 @@ class Console(object):
 			while True:
 				if self.connected: 
 					self.read()
+					self.send()
 		finally:
 			self.console.close()
-
-	def publish(self, name, message):
-		try:
-			full_msg = SERIAL.MSG.NAME + name + SERIAL.MSG.DATA + message + SERIAL.MSG.END
-			self.console.send(full_msg)
-		except:
-			pass
 
 	def log(self, message):
 		self.console.send(message)
