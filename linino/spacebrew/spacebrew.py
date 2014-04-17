@@ -209,7 +209,7 @@ class Spacebrew(object):
 		full = json.loads( message )
 		msg = full["message"]
 		if self.subscribers[msg['name']]:
-	 		if self._console: self._console.forward(str(msg['name']), str(msg['value']))
+	 		if self._console: self._console.forward( str(msg['name']), str(msg['value']) )
 
 	def on_error(self,ws,error):
  		if self._console: 
@@ -299,19 +299,21 @@ class Console(object):
 
 		new_data = self.console.recv(1024)
 
-	    # if new data was received then add it buffer and check if end message was provided
-		if new_data:
-
-			if new_data == MSG.CONFIRM:
-				self.msg_ready = True
-
-			self.msg_buffer += new_data
-			index_end = self.msg_buffer.find(SERIAL.MSG.END)
-
 		if new_data == '':
 			console_running = False
 			self.console.close()
 			return None
+
+		# if new data was received then add it buffer and check if end message was provided
+		else:
+
+			if new_data == SERIAL.MSG.CONFIRM:
+				self.msg_ready = True
+				self.send_queue()
+
+			else:
+				self.msg_buffer += new_data
+				index_end = self.msg_buffer.find(SERIAL.MSG.END)
 
 		# if message end was found, then look for the start and div marker
 		if index_end > 0:
@@ -330,9 +332,8 @@ class Console(object):
 					self.brew.publish(publish_route, msg)
 
 				except Exception:
-					error_msg = ERROR + "issue sending message via spacebrew, route: " + publish_route + "\n" + SERIAL.MSG.END
+					error_msg = "issue sending message via spacebrew, route: " + publish_route + "\n" + SERIAL.MSG.END
 					self.log(error_msg)
-
 
 				# send confirmation back to arduino
 				try:
@@ -340,51 +341,44 @@ class Console(object):
 					self.console.send(confirm_pub)
 
 				except Exception:
-					error_msg = ERROR + "issue sending confirmation about: " + publish_route + "\n" + SERIAL.MSG.END
+					error_msg = "issue sending confirmation about: " + publish_route + "\n" + SERIAL.MSG.END
 					self.log(error_msg)
 
 			self.msg_buffer = ""
 
+		self.send_queue()
+
 	# Adds messages to queue for Arduino
-	def forward(self, name, data):
+	def forward(self, name, value):
 
 		# remove existing publisher item from array
-		for index, item in self.msg_queue:
-			if self.msg_queue[index].name == name:
-				self.msg_queue.pop(index)
+		if len(self.msg_queue) > 0:
+			for index, item in enumerate(self.msg_queue):
+				if self.msg_queue[index]['name'] == name:
+					self.msg_queue.pop(index)
 
 		# add new publisher item to array
-		self.msg_queue.append({
-				name: 		name,
-				data: 		data,
-				message: 	SERIAL.MSG.NAME + name + SERIAL.MSG.DATA + data + SERIAL.MSG.END
-			})
+		new_data = { "name": name, "data": value }
+		new_data['message'] = SERIAL.MSG.NAME + name + SERIAL.MSG.DATA + value + SERIAL.MSG.END
+		self.msg_queue.append(new_data)
 
-		# self.send()
+		cur_index = len(self.msg_queue) - 1
+
+		self.send_queue()
 
 	# Send messages from queue to Arduino
-	def send(self):
+	def send_queue(self):
 
-		if self.msg_ready and len(self.msg_queue) > 0:
+		if self.msg_ready == True and len(self.msg_queue) > 0:
 
 			try:
-				self.console.send(self.msg_queue[0].message)
+				self.console.send( str(self.msg_queue[0]['message']) )
 				self.msg_queue.pop(0)
 				self.msg_ready = False
 
 			except:
-				error_msg = ERROR + "issue sending data to arduino - name: " + name + " - message: " + message + "\n" + SERIAL.MSG.END
+				error_msg = "issue sending data to arduino from send_queue"
 				self.log(error_msg)
-				# pass
-
-		# try:
-		# 	full_msg = SERIAL.MSG.NAME + name + SERIAL.MSG.DATA + message + SERIAL.MSG.END
-		# 	self.console.send(full_msg)
-
-		# except:
-		# 	error_msg = ERROR + "issue sending data to arduino - name: " + name + " - message: " + message + "\n" + SERIAL.MSG.END
-		# 	self.log(error_msg)
-		# 	# pass
 
 	def run(self):
 		self.start()
@@ -392,7 +386,6 @@ class Console(object):
 			while True:
 				if self.connected: 
 					self.read()
-					self.send()
 		finally:
 			self.console.close()
 
@@ -416,7 +409,7 @@ if __name__ == "__main__":
 	brew = Spacebrew( 	name=options.name, 
 						server=options.server, 
 						description=options.description,
-						port=options.port)
+						port=options.port )
 
 	for sub in options.subs:
 		brew.addSubscriber(sub["name"], sub["type"])

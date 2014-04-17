@@ -127,7 +127,7 @@ void SpacebrewYun::addSubscribe(const String& name, const String& type) {
 }
 
 void SpacebrewYun::connect(String _server, int _port) {
-	Serial.println(F("v2.1"));
+	Serial.println(F("v2.3"));
 	_started = true;
 	server = _server;
 	port = _port; 
@@ -315,7 +315,7 @@ void SpacebrewYun::monitor() {
 		}
 	}
 
-	Serial.println(F(" - END monitor"));
+	// Serial.println(F(" - END monitor"));
 
 }
 
@@ -341,9 +341,9 @@ void SpacebrewYun::verbose(boolean verbose = true) {
 }
 
 void SpacebrewYun::onMessage() {
-	Serial.print(F(" onMessage received - name "));
+	Serial.print(F("onMessage: name "));
 	Serial.print(sub_name);
-	Serial.print(F(" - value "));
+	Serial.print(F(", value "));
 	Serial.print(sub_msg);
 
 	if (subscribers != NULL && sub_name.equals("") == false) {
@@ -356,37 +356,34 @@ void SpacebrewYun::onMessage() {
 		}
 	}
 
-	Serial.print(F(" - type "));
-	Serial.print(sub_type);
-	Serial.println(F(" END onMessage type ID"));
+	Serial.print(F(", type "));
+	Serial.println(sub_type);
 
 	if ( sub_type.equals("range") ) {
 		if (_onRangeMessage != NULL) {
 			_onRangeMessage( sub_name, int(sub_msg.toInt()) );
 		} else {
-			Serial.println(F("ERROR :: Range message received, no callback method is registered"));
+			Serial.println(F("ERROR :: Range message, no callback"));
 		}
 	} else if ( sub_type.equals("boolean") ) {
 		if (_onBooleanMessage != NULL) {
 			_onBooleanMessage( sub_name, ( sub_msg.equals("false") ? false : true ) );
 		} else {
-			Serial.println(F("ERROR :: Boolean message received, no callback method is registered"));
+			Serial.println(F("ERROR :: Boolean message, no callback"));
 		}
 	} else if ( sub_type.equals("string") ) {
 		if (_onStringMessage != NULL) {
 			_onStringMessage( sub_name, sub_msg );	
 		} else {
-			Serial.println(F("ERROR :: String message received, no callback method is registered"));
+			Serial.println(F("ERROR :: String message, no callback"));
 		}
 	} else if ( sub_type.equals("custom") )  {
 		if (_onCustomMessage != NULL) {
 			_onCustomMessage( sub_name, sub_msg, sub_type );
 		} else {
-			Serial.println(F("ERROR :: Custom message received, no callback method is registered"));
+			Serial.println(F("ERROR :: Custom message, no callback"));
 		}
 	}
-
-	Serial.println(F(" - END onMessage"));
 
 }
 
@@ -435,7 +432,7 @@ void SpacebrewYun::getPids() {
 	pids.run();
 
 	if (_verbose) {
-		Serial.println(F("Checking if spacebrew process already running"));
+		Serial.println(F("Checking if spacebrew running"));
 	}
 
 	int sbPidsIndex = 0;
@@ -476,7 +473,7 @@ void SpacebrewYun::killPids() {
 			char * newPID = itoa(sbPids[i], pid, 10);
 
 			if (_verbose) {
-				Serial.print(F("Stopping existing spacebrew processes with pids: "));
+				Serial.print(F("Stopping existing processes: "));
 				Serial.println(newPID);
 			}
 
